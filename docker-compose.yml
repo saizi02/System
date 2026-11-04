@@ -1,0 +1,71 @@
+# SSTWAS 2.0 production stack: PostgreSQL + app + HTTPS proxy + nightly backups.
+# Usage: copy deploy/.env.example to deploy/.env, edit it, then:  docker compose --env-file deploy/.env up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sstwas
+      POSTGRES_USER: sstwas
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy/.env}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U sstwas -d sstwas"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://sstwas:${DB_PASSWORD}@db:5432/sstwas
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in deploy/.env}
+      APP_ORIGIN: https://${DOMAIN:?set DOMAIN in deploy/.env}
+      STORE_MODE: ${STORE_MODE:-shared}
+      STORE_ID: ${STORE_ID:-}
+      STORE_TIMEZONE: ${STORE_TIMEZONE:-Africa/Harare}
+      ADMIN_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-simulated}
+      ALLOW_SIMULATED_PAYMENTS: ${ALLOW_SIMULATED_PAYMENTS:-false}
+    volumes:
+      - uploads:/app/server/uploads
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: sstwas
+      PGDATABASE: sstwas
+      PGPASSWORD: ${DB_PASSWORD}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+    volumes:
+      - ./backups:/backups
+      - ./deploy/backup-loop.sh:/backup-loop.sh:ro
+      - uploads:/uploads:ro
+    entrypoint: ["sh","/backup-loop.sh"]
+volumes:
+  dbdata:
+  uploads:
+  caddydata:
+  caddyconfig:

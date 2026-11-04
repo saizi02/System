@@ -1,0 +1,22 @@
+export type Profile='grocery'|'food'|'clothing';
+export type Role='super_admin'|'business_admin'|'cashier'|'kitchen';
+export const roleLabel:Record<Role,string>={super_admin:'Super Admin',business_admin:'General Admin',cashier:'Cashier',kitchen:'Kitchen'};
+/** Where each role lands after signing in. */
+export const homeFor=(role:Role|null|undefined)=>role==='cashier'?'/cashier':role==='kitchen'?'/kitchen':role?'/admin':'/login';
+export type Portal='admin'|'cashier'|'kitchen';
+export const portalRoles:Record<Portal,Role[]>={admin:['super_admin','business_admin'],cashier:['cashier','business_admin','super_admin'],kitchen:['kitchen','business_admin','super_admin']};
+export const portalName:Record<Portal,string>={admin:'Admin console',cashier:'Cashier station',kitchen:'Kitchen display'};
+export type Business={id:string;name:string;profile:Profile;status:'active'|'suspended';domain?:string;currency?:string;rates?:Record<string,number>;createdAt?:any};
+export type Branch={id:string;name:string;active:boolean;createdAt?:any};
+export type Variant={id:string;name:string};
+export type Product={id:string;name:string;category:string;priceCents:number;barcode?:string;image?:string;description?:string;active:boolean;variants:Variant[]};
+export type Inventory={id:string;productId:string;variantId:string;quantity:number;lowStock?:number;updatedAt?:any};
+export type CartLine={productId:string;variantId:string;quantity:number};
+export type OrderLine={productId:string;variantId:string;name:string;variantName:string;quantity:number;unitCents:number;lineCents:number};
+export type Order={id:string;businessId:string;branchId:string;customerUid:string;items:OrderLine[];totalCents:number;currency:string;rate:number;totalMinor:number;method:'cash'|'card'|'ecocash';paymentSimulated:boolean;paymentOutcome?:'approved'|'pending'|'declined';serviceType?:'dine_in'|'takeaway'|null;orderNote?:string;status:'pending_cash'|'paid'|'cancelled'|'failed';fulfillment:'new'|'preparing'|'ready'|'collected';source:'mobile'|'kiosk'|'pos';exitVerified:boolean;kioskName?:string|null;createdAt?:any;updatedAt?:any;handledBy?:string;reprints?:number};
+export type Membership={uid:string;email:string;role:Role;displayName?:string;businessId?:string;branchId?:string;disabled?:boolean;mustChangePassword?:boolean;lastLoginAt?:any;createdAt?:any};
+export type AuditEntry={id:string;businessId?:string|null;actorId?:string|null;actorEmail?:string|null;actorRole?:Role|null;action:string;details:Record<string,any>;createdAt:any};
+export const money=(cents:number, currency='USD')=>`${currency} ${(cents/100).toFixed(2)}`;
+export const sku=(productId:string,variantId:string)=>`${productId}_${variantId}`;
+export const timestamp=(t:any)=>t?new Date(t).toLocaleString():'Just now';
+export const profileLabel=(p:Profile)=>({grocery:'Grocery',food:'Food & Dining',clothing:'Fashion & Clothing'}[p]);

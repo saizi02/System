@@ -1,0 +1,17 @@
+{
+  "id": "/kiosk",
+  "name": "SSTWAS Kiosk",
+  "short_name": "SSTWAS Kiosk",
+  "description": "Dedicated self-service kiosk for tablets and POS terminals, connected to the SSTWAS store system.",
+  "start_url": "/kiosk",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "theme_color": "#0b1630",
+  "background_color": "#0b1630",
+  "icons": [
+    {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
