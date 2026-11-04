@@ -17,4 +17,7 @@ try{
   finally{client.release()}
  }
  if(!count)console.log('Database schema is up to date.');
-}catch(err){console.error('Migration failed:',err.message);process.exitCode=1}finally{await pool.end()}
+}catch(err){
+ console.error('Migration failed:',err.stack||err.message||String(err));
+ process.exitCode=1;
+}finally{await pool.end()}
