@@ -10,7 +10,7 @@ import {pool,sql} from './db.js';
 import {HttpError,assert,tokenHash,publicStaff,PORTALS} from './helpers.js';
 import {getData} from './read.js';
 import {action,audit} from './actions.js';
-import {config,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv} from './reports.js';
+import {config,publicOrigin,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv} from './reports.js';
 const app=express();const production=process.env.NODE_ENV==='production';const PORT=Number(process.env.PORT||3001);
 validateConfig();
 if(production)app.set('trust proxy',1);
@@ -26,7 +26,7 @@ const cookieHeader=(token,maxAge)=>`${cookieName}=${encodeURIComponent(token)}; 
 const clearCookie=()=>`${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${production?'; Secure':''}`;
 // In development, tablets on the same Wi-Fi (private IPv4 ranges) may call the API; production uses APP_ORIGIN only.
 const lanOrigin=/^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/;
-const allowedOrigins=(process.env.APP_ORIGIN||'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://127.0.0.1:5174').split(',').map(x=>x.trim());
+const allowedOrigins=(publicOrigin||'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://127.0.0.1:5174').split(',').map(x=>x.trim());
 app.use((req,res,next)=>{if(['POST','PUT','PATCH','DELETE'].includes(req.method)){const origin=req.get('origin');if(origin&&!allowedOrigins.includes(origin)&&!(!production&&lanOrigin.test(origin)))return res.status(403).json({error:'Request origin not allowed'});if(!origin&&production)return res.status(403).json({error:'Missing request origin'});}next()});
 async function startSession(res,userId=null,guestId=randomUUID()){
  const token=randomBytes(48).toString('base64url');const ttl=userId?12*3600:7*24*3600;

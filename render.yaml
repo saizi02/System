@@ -18,8 +18,6 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
-      - key: APP_ORIGIN
-        sync: false
       - key: STORE_MODE
         value: shared
       - key: STORE_TIMEZONE

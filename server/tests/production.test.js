@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {csv,csvCell} from '../src/csv.js';
 import {rateLimit} from '../src/ratelimit.js';
 
-const run=(env,code)=>spawnSync(process.execPath,['--input-type=module','-e',code],{env:{PATH:process.env.PATH,DATABASE_URL:'postgres://x@127.0.0.1/x',...env},encoding:'utf8',cwd:new URL('..',import.meta.url).pathname});
+const run=(env,code)=>spawnSync(process.execPath,['--input-type=module','-e',code],{env:{PATH:process.env.PATH,DATABASE_URL:'postgres://x@127.0.0.1/x',...env},encoding:'utf8',cwd:fileURLToPath(new URL('..',import.meta.url))});
 
 test('csv escapes quotes and blocks spreadsheet formulas',()=>{
  assert.equal(csvCell('a,b'),'"a,b"');assert.equal(csvCell('say "hi"'),'"say ""hi"""');
@@ -19,9 +20,10 @@ test('rate limiter blocks after max and reports Retry-After',()=>{
 });
 test('production refuses to start without strong secrets and https origin',()=>{
  const code="import('./src/config.js').then(m=>{m.validateConfig();console.log('OK')}).catch(e=>{console.log(e.message)})";
- assert.match(run({NODE_ENV:'production'},code).stdout,/SESSION_SECRET.*APP_ORIGIN/s);
+ assert.match(run({NODE_ENV:'production'},code).stdout,/APP_ORIGIN.*RENDER_EXTERNAL_URL/s);
  assert.match(run({NODE_ENV:'production',SESSION_SECRET:'x'.repeat(40),APP_ORIGIN:'http://till.shop'},code).stdout,/must start with https/);
  assert.match(run({NODE_ENV:'production',SESSION_SECRET:'x'.repeat(40),APP_ORIGIN:'https://till.shop'},code).stdout,/OK/);
+ assert.match(run({NODE_ENV:'production',SESSION_SECRET:'x'.repeat(40),RENDER_EXTERNAL_URL:'https://till.onrender.com'},code).stdout,/OK/);
  assert.match(run({STORE_TIMEZONE:'Mars/Base'},code).stdout,/not a valid time zone/);
 });
 test('simulated card payments are disabled in production unless explicitly allowed',()=>{
