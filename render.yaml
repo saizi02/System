@@ -1,0 +1,26 @@
+databases:
+  - name: sstwas-postgres
+    databaseName: sstwas
+    plan: free
+
+services:
+  - type: web
+    name: sstwas
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sstwas-postgres
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: APP_ORIGIN
+        sync: false
+      - key: STORE_MODE
+        value: shared
+      - key: STORE_TIMEZONE
+        value: Africa/Harare

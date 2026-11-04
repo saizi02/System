@@ -43,6 +43,12 @@ Camera features and "install as app" need HTTPS. Set `DOMAIN=till.local` (any na
 - Test a restore on a spare machine once before you rely on it.
 - Without Docker: `pg_dump --format=custom -f backup.dump sstwas` and `pg_restore -d sstwas --no-owner backup.dump`.
 
+## Render deployment
+
+The repository includes `render.yaml` as a Render Blueprint. In the Render dashboard, choose **New > Blueprint**, select this repository, and create the resources. The Blueprint provisions PostgreSQL and supplies its connection string automatically as `DATABASE_URL`.
+
+When prompted, set `APP_ORIGIN` to the exact public HTTPS URL, for example `https://sstwas.onrender.com`. Render generates `SESSION_SECRET` automatically. For a single-store deployment, set `STORE_MODE=single` and `STORE_ID` to the store UUID.
+
 ## 5. Hardware
 - **Kiosk:** tablet or touchscreen PC, set to never sleep, running the installed kiosk app (pair it in Admin, Kiosks). Connect the **barcode scanner** by USB or Bluetooth (see `BARCODE-SCANNER.md`). Grocery kiosks have no camera scanning; the scanner and an on-screen keypad are used.
 - **Cashier station:** any PC or tablet with the browser; a **receipt printer** (80 mm) works through the browser print dialog; a USB scanner works for exit verification.
