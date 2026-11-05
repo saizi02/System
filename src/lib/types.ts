@@ -16,6 +16,9 @@ export type OrderLine={productId:string;variantId:string;name:string;variantName
 export type Order={id:string;businessId:string;branchId:string;customerUid:string;items:OrderLine[];totalCents:number;currency:string;rate:number;totalMinor:number;method:'cash'|'card'|'ecocash'|'bank';paymentSimulated:boolean;paymentOutcome?:'approved'|'pending'|'declined';serviceType?:'dine_in'|'takeaway'|null;orderNote?:string;status:'pending_cash'|'paid'|'cancelled'|'failed'|'refunded'|'voided';fulfillment:'new'|'preparing'|'ready'|'collected';source:'mobile'|'kiosk'|'pos';exitVerified:boolean;kioskName?:string|null;createdAt?:any;updatedAt?:any;handledBy?:string;adjustmentReason?:string;adjustedAt?:any;reprints?:number};
 export type Membership={uid:string;email:string;role:Role;displayName?:string;businessId?:string;branchId?:string;disabled?:boolean;mustChangePassword?:boolean;lastLoginAt?:any;createdAt?:any};
 export type AuditEntry={id:string;businessId?:string|null;actorId?:string|null;actorEmail?:string|null;actorRole?:Role|null;action:string;details:Record<string,any>;createdAt:any};
+export type Supplier={id:string;name:string;contactName?:string;email?:string;phone?:string;address?:string;active:boolean;createdAt?:any};
+export type PurchaseLine={productId:string;variantId:string;name:string;variantName:string;quantity:number;costCents:number};
+export type PurchaseOrder={id:string;businessId:string;branchId:string;supplierId:string;reference:string;status:'draft'|'ordered'|'received'|'cancelled';lines:PurchaseLine[];notes?:string;receivedAt?:any;createdAt?:any};
 export const money=(cents:number, currency='USD')=>`${currency} ${(cents/100).toFixed(2)}`;
 export const sku=(productId:string,variantId:string)=>`${productId}_${variantId}`;
 export const timestamp=(t:any)=>t?new Date(t).toLocaleString():'Just now';

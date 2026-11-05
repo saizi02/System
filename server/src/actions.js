@@ -68,6 +68,39 @@ export async function action(name,input,req){
   const product=await one('SELECT variants FROM products WHERE id=$1 AND business_id=$2',[productId,businessId]);assert(product&&product.variants.some(v=>v.id===variantId),400,'Product or variant not found');const br=await one('SELECT id FROM branches WHERE id=$1 AND business_id=$2',[branchId,businessId]);assert(br,404,'Branch not found');
   await sql('INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity,low_stock) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=EXCLUDED.quantity,low_stock=EXCLUDED.low_stock,updated_at=now()',[businessId,branchId,productId,variantId,qty,low]);await audit(businessId,actor.id,'stock.set',{productId,variantId,qty});return{ok:true};
  }
+  case 'upsertSupplier':{
+   const businessId=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],businessId);
+   const name=required(input.name,'supplier name',160),contactName=String(input.contactName||'').trim().slice(0,120),email=String(input.email||'').trim().slice(0,250),phone=String(input.phone||'').trim().slice(0,60),address=String(input.address||'').trim().slice(0,300);
+   let row;if(input.supplierId){row=await one('UPDATE suppliers SET name=$1,contact_name=$2,email=$3,phone=$4,address=$6,active=$7,updated_at=now() WHERE id=$5 AND business_id=$8 RETURNING id',[name,contactName,email,phone,input.supplierId,address,input.active!==false,businessId])}
+   else row=await one('INSERT INTO suppliers(business_id,name,contact_name,email,phone,address,active) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',[businessId,name,contactName,email,phone,address,input.active!==false]);
+   assert(row,404,'Supplier not found');await audit(businessId,actor.id,input.supplierId?'supplier.updated':'supplier.created',{supplierId:row.id,name});return{supplierId:row.id};
+  }
+  case 'savePurchaseOrder':{
+   const businessId=required(input.businessId,'businessId'),branchId=required(input.branchId,'branchId');authorize(actor,['super_admin','business_admin'],businessId,branchId);
+   const supplierId=required(input.supplierId,'supplierId'),supplier=await one('SELECT id FROM suppliers WHERE id=$1 AND business_id=$2 AND active=true',[supplierId,businessId]);assert(supplier,404,'Supplier not found');
+   assert(Array.isArray(input.lines)&&input.lines.length>0&&input.lines.length<=100,400,'Purchase order needs 1 to 100 lines');
+   const seen=new Set(),lines=[];
+   for(const line of input.lines){const productId=required(line.productId,'product ID');const variantId=required(line.variantId,'variant ID');const key=`${productId}:${variantId}`;assert(!seen.has(key),400,'Duplicate purchase line');seen.add(key);
+    const product=await one('SELECT name,variants FROM products WHERE id=$1 AND business_id=$2',[productId,businessId]);assert(product&&product.variants.some(v=>v.id===variantId),400,'Product or variant not found');
+    const variant=product.variants.find(v=>v.id===variantId);const quantity=integer(line.quantity,'quantity',1,100000);const cost=integer(line.costCents,'costCents',0,100000000);
+    lines.push({productId,variantId,name:product.name,variantName:variant.name,quantity,costCents:cost});
+   }
+   const status=['draft','ordered'].includes(input.status)?input.status:'draft';const reference=String(input.reference||'').trim().slice(0,80),notes=String(input.notes||'').trim().slice(0,1000);
+   let row;if(input.purchaseOrderId)row=await one("UPDATE purchase_orders SET supplier_id=$1,reference=$2,status=$3,lines=$4::jsonb,notes=$5,updated_at=now() WHERE id=$6 AND business_id=$7 AND branch_id=$8 AND status IN ('draft','ordered') RETURNING id",[supplierId,reference,status,JSON.stringify(lines),notes,input.purchaseOrderId,businessId,branchId]);
+   else row=await one("INSERT INTO purchase_orders(business_id,branch_id,supplier_id,reference,status,lines,notes,created_by) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8) RETURNING id",[businessId,branchId,supplierId,reference,status,JSON.stringify(lines),notes,actor.id]);
+   assert(row,404,'Editable purchase order not found');await audit(businessId,actor.id,input.purchaseOrderId?'purchase_order.updated':'purchase_order.created',{purchaseOrderId:row.id,reference,status});return{purchaseOrderId:row.id};
+  }
+  case 'receivePurchaseOrder':{
+   const businessId=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],businessId);
+   const purchaseOrderId=required(input.purchaseOrderId,'purchaseOrderId');await transaction(async c=>{
+    const po=(await c.query("SELECT * FROM purchase_orders WHERE id=$1 AND business_id=$2 AND status IN ('draft','ordered') LIMIT 1",[purchaseOrderId,businessId])).rows[0];assert(po,404,'Purchase order is not available to receive');
+    for(const line of po.lines){assert(Number.isSafeInteger(line.quantity)&&line.quantity>0,409,'Invalid purchase order line');
+     await c.query("INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity,low_stock) VALUES($1,$2,$3,$4,$5,5) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity,updated_at=now()",[businessId,po.branch_id,line.productId,line.variantId,line.quantity]);
+    }
+    await c.query("UPDATE purchase_orders SET status='received',received_at=now(),updated_at=now() WHERE id=$1",[purchaseOrderId]);
+   });
+   await audit(businessId,actor.id,'purchase_order.received',{purchaseOrderId});return{ok:true};
+  }
  case 'createStaff':{
   // Super Admin: any role, any store. General Admin: Cashier / Kitchen accounts for their own store only.
   authorize(actor,['super_admin','business_admin']);

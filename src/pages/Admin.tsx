@@ -5,7 +5,7 @@ import {listResource,detailResource,filterResource,equals} from '../lib/resource
 import {QRCodeSVG} from 'qrcode.react';
 import ProductLabels from '../components/ProductLabels';import {useConfig} from '../lib/config';import DayReport from '../components/DayReport';import ScanField from '../components/ScanField';import {inspectBarcode,cleanCode} from '../lib/barcode';import {scanTone} from '../lib/hardwareScanner';import {productLink} from '../lib/scan';
 import {Activity,BarChart3,ChefHat,ClipboardList,Crown,ExternalLink,FileWarning,Home,KeyRound,LogOut,Menu,Monitor,
- Package,Plus,Printer,QrCode,Settings,ShieldCheck,ShoppingCart,Store,Tablet,UserCog,Users,Wallet,Warehouse,X} from 'lucide-react';
+ Package,Plus,Printer,QrCode,Settings,ShieldCheck,ShoppingCart,Store,Tablet,Truck,UserCog,Users,Wallet,Warehouse,X} from 'lucide-react';
 import {useSession} from '../lib/auth';
 import {useDoc,useLive} from '../lib/live';
 import {call,uploadProductImage} from '../lib/api';
@@ -15,9 +15,9 @@ import {KioskManager} from '../components/Kiosks';
 import {ChangeOwnPassword} from '../components/Account';
 import {generatePassword,passwordOk} from '../lib/password';
 import {money,profileLabel,roleLabel,sku,timestamp} from '../lib/types';
-import type {AuditEntry,Business,Branch,Product,Inventory,Order,Membership,Profile,Role} from '../lib/types';
+import type {AuditEntry,Business,Branch,Product,Inventory,Order,Membership,Profile,Role,Supplier,PurchaseOrder} from '../lib/types';
 
-type Section='overview'|'stores'|'staff'|'products'|'stock'|'orders'|'sessions'|'flags'|'qr'|'kiosks'|'reports'|'activity'|'settings'|'account';
+type Section='overview'|'stores'|'staff'|'products'|'stock'|'suppliers'|'orders'|'sessions'|'flags'|'qr'|'kiosks'|'reports'|'activity'|'settings'|'account';
 type Run=(name:string,data:Record<string,unknown>,success?:string)=>Promise<Record<string,any>|null>;
 const navItems:{key:Section;name:string;icon:ReactNode;owner?:boolean;general?:boolean}[]=[ // owner: Super Admin only · general: day-to-day store work, hidden from the Super Admin
  {key:'overview',name:'Overview',icon:<Home/>},
@@ -25,6 +25,7 @@ const navItems:{key:Section;name:string;icon:ReactNode;owner?:boolean;general?:b
  {key:'staff',name:'Staff accounts',icon:<Users/>},
  {key:'products',name:'Products',icon:<Package/>,general:true},
  {key:'stock',name:'Inventory',icon:<Warehouse/>,general:true},
+ {key:'suppliers',name:'Suppliers',icon:<Truck/>,general:true},
  {key:'orders',name:'Transactions',icon:<ClipboardList/>,general:true},
  {key:'sessions',name:'Shopper sessions',icon:<Monitor/>},
  {key:'flags',name:'Flagged scans',icon:<FileWarning/>,general:true},
@@ -61,6 +62,10 @@ export default function Admin(){
  const {items:products,error:productError}=useLive<Product>(prodRef,[storeId]);
  const invRef=useMemo(()=>storeId&&activeBranch?listResource('businesses',storeId,'branches',activeBranch,'inventory'):null,[storeId,activeBranch]);
  const {items:stock,error:invError}=useLive<Inventory>(invRef,[storeId,activeBranch]);
+ const suppliersRef=useMemo(()=>storeId&&section==='suppliers'?listResource('businesses',storeId,'suppliers'):null,[storeId,section]);
+ const {items:suppliers,error:supplierError}=useLive<Supplier>(suppliersRef,[storeId,section]);
+ const purchaseOrdersRef=useMemo(()=>storeId&&activeBranch&&section==='suppliers'?listResource('businesses',storeId,'purchase-orders'):null,[storeId,activeBranch,section]);
+ const {items:purchaseOrders,error:purchaseOrderError}=useLive<PurchaseOrder>(purchaseOrdersRef,[storeId,activeBranch,section]);
  const orderRef=useMemo(()=>storeId&&activeBranch?filterResource(listResource('businesses',storeId,'orders'),equals('branchId',activeBranch)):null,[storeId,activeBranch]);
  const {items:orders,error:orderError}=useLive<Order>(orderRef,[storeId,activeBranch]);
  const wantStaff=section==='staff'||section==='overview';
@@ -74,7 +79,7 @@ export default function Admin(){
  const {items:flags,error:flagError}=useLive<{id:string;type:string;orderId:string;createdAt:any}>(flagsRef,[storeId]);
  const run:Run=async(name,data,success='Saved to PostgreSQL')=>{setWorking(true);setError('');setMessage('');try{const result=await call<Record<string,any>>(name,data);setMessage(success);return result}catch(ex){setError((ex as Error).message);return null}finally{setWorking(false)}};
  const select=(s:Section)=>{setSection(s);setMobileNav(false);setError('');setMessage('')};
- const failed=[storeError,ownError,branchError,productError,invError,orderError,staffError,auditError,sessionError,flagError,error].find(Boolean);
+ const failed=[storeError,ownError,branchError,productError,invError,supplierError,purchaseOrderError,orderError,staffError,auditError,sessionError,flagError,error].find(Boolean);
  const revenue=orders.filter(o=>o.status==='paid').reduce((a,o)=>a+o.totalCents,0);
  return <div className="workspace-shell admin-workspace">
   <aside className={'workspace-nav '+(mobileNav?'open':'')}><div className="side-brand"><Brand/><button className="nav-close" onClick={()=>setMobileNav(false)} aria-label="Close menu"><X/></button></div>
@@ -93,6 +98,7 @@ export default function Admin(){
    {section==='account'&&<AccountSection/>}
    {section==='products'&&storeId&&<ProductManager key={storeId} storeId={storeId} profile={store?.profile||'grocery'} branchId={activeBranch} branchName={branches.find(b=>b.id===activeBranch)?.name||''} products={products} busy={working} run={run}/>}
    {section==='stock'&&storeId&&activeBranch&&<StockManager storeId={storeId} branchId={activeBranch} products={products} rows={stock} busy={working} run={run}/>}
+   {section==='suppliers'&&storeId&&activeBranch&&<SupplierManager storeId={storeId} branchId={activeBranch} branches={branches} products={products} suppliers={suppliers} orders={purchaseOrders} busy={working} run={run}/>}
    {section==='orders'&&storeId&&<Orders rows={orders} storeId={storeId}/>}
    {section==='sessions'&&storeId&&<Card title="Shopper sessions" info="Active or completed carts reported by customer and kiosk clients."><Table columns={['Session','Items','Status','Last seen']}>{sessions.map(s=><tr key={s.id}><td><code>{s.id.slice(0,14)}</code></td><td>{s.count}</td><td><Pill text={s.status}/></td><td>{timestamp(s.updatedAt)}</td></tr>)}</Table>{!sessions.length&&<Empty title="No sessions yet"/>}</Card>}
    {section==='flags'&&storeId&&<Card title="Flagged receipt activity" info="Repeat exit verifications are recorded here."><Table columns={['Event','Receipt','When']}>{flags.map(f=><tr key={f.id}><td><Pill text={f.type}/></td><td>{f.orderId}</td><td>{timestamp(f.createdAt)}</td></tr>)}</Table>{!flags.length&&<Empty title="No flags recorded"/>}</Card>}
@@ -246,6 +252,24 @@ function ProductManager({storeId,profile,branchId,branchName,products,busy,run}:
    {formError&&<p className="error wide" role="alert">{formError}</p>}
    <div className="form-actions"><button className="btn btn-primary" disabled={busy||uploading}>{editing?'Update':'Save'} {profile==='food'?'menu item':profile==='clothing'?'item':'product'}</button>{editing&&<button type="button" className="btn btn-outline" onClick={reset}>Cancel edit</button>}</div></form></Card>
   <Card title={profile==='food'?'Menu':profile==='clothing'?'Clothing catalogue':'Product catalogue'} info="Items appear on phones and kiosks immediately.">{profile==='grocery'&&<div className="catalogue-find"><ScanField label="Scan to find or add a product" value={findCode} onChange={setFindCode} onCode={findByScan} placeholder="Click here, then scan a barcode" hint={findMsg||'Scanning an existing barcode opens that product for editing. A new barcode starts a new product.'}/></div>}{profile==='grocery'&&branchId&&<div className="catalogue-tools"><button className="btn btn-outline" disabled={!products.some(p=>p.active)} onClick={()=>setLabels(products.filter(p=>p.active))}><QrCode size={16}/> Print all QR labels</button><small className="muted">Each QR opens {branchName||'this branch'} on the shopper's phone with the item in their cart.</small></div>}<Table columns={profile==='grocery'?['Product','Category','Barcode','Price','Status','Actions']:['Item','Category','Price','Status','Actions']}>{products.map(p=><tr key={p.id}><td><strong>{p.name}</strong>{summary(p)&&<small className="table-sub">{summary(p)}</small>}</td><td>{p.category}</td>{profile==='grocery'&&<td><code>{p.barcode||'—'}</code></td>}<td>{money(p.priceCents)}</td><td><Pill text={p.active?'active':'suspended'}/></td><td><div className="table-actions"><button onClick={()=>edit(p)}>Edit</button>{profile==='grocery'&&branchId&&<button onClick={()=>setLabels([p])}>QR</button>}<button disabled={busy} onClick={()=>void run('upsertProduct',{businessId:storeId,productId:p.id,name:p.name,category:p.category,priceCents:p.priceCents,barcode:p.barcode||'',description:p.description||'',image:p.image||'',variants:p.variants,active:!p.active})}>{p.active?'Disable':'Enable'}</button></div></td></tr>)}</Table>{!products.length&&<Empty title={profile==='food'?'No menu items yet':'No products added'}/>}</Card>{labels&&<ProductLabels products={labels} businessId={storeId} branchId={branchId} storeName={branchName||'Store'} onClose={()=>setLabels(null)}/>}</>;
+}
+function SupplierManager({storeId,branchId,branches,products,suppliers,orders,busy,run}:{storeId:string;branchId:string;branches:Branch[];products:Product[];suppliers:Supplier[];orders:PurchaseOrder[];busy:boolean;run:Run}){
+ const [supplierName,setSupplierName]=useState(''),[contactName,setContactName]=useState(''),[email,setEmail]=useState(''),[phone,setPhone]=useState(''),[address,setAddress]=useState('');
+ const [supplierId,setSupplierId]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
+ const [productId,setProductId]=useState(''),[variantId,setVariantId]=useState(''),[quantity,setQuantity]=useState('1'),[cost,setCost]=useState('0'),[lines,setLines]=useState<any[]>([]);
+ const product=products.find(p=>p.id===productId);
+ useEffect(()=>{setSupplierId(suppliers[0]?.id||'')},[suppliers]);
+ useEffect(()=>{if(!product?.variants.some(v=>v.id===variantId))setVariantId(product?.variants[0]?.id||'')},[product,variantId]);
+ const addSupplier=async(e:FormEvent)=>{e.preventDefault();const result=await run('upsertSupplier',{businessId:storeId,name:supplierName,contactName,email,phone,address},'Supplier saved');if(result){setSupplierName('');setContactName('');setEmail('');setPhone('');setAddress('')}};
+ const addLine=()=>{if(!product||!variantId)return;const variant=product.variants.find(v=>v.id===variantId);setLines(v=>[...v,{productId,variantId,name:product.name,variantName:variant?.name||variantId,quantity:Number(quantity)||1,costCents:Math.round(Number(cost)*100)}]);setProductId('')};
+ const createOrder=async(status:'draft'|'ordered')=>{if(!supplierId||!lines.length)return;const result=await run('savePurchaseOrder',{businessId:storeId,branchId,supplierId,reference,status,notes,lines},status==='draft'?'Purchase draft saved':'Purchase order submitted');if(result)setLines([])};
+ const branchName=branches.find(b=>b.id===branchId)?.name||'Current branch';
+ return <>
+  <Card title="Add supplier" info="Contact details are stored against the store and reused for purchase orders."><form className="form-grid" onSubmit={e=>void addSupplier(e)}><Input label="Supplier name" value={supplierName} onChange={setSupplierName} required/><Input label="Contact person" value={contactName} onChange={setContactName}/><Input label="Email" value={email} onChange={setEmail} type="email"/><Input label="Phone" value={phone} onChange={setPhone}/><label className="field wide">Address<input value={address} onChange={e=>setAddress(e.target.value)}/></label><div className="form-actions"><button className="btn btn-primary" disabled={busy}><Plus size={17}/> Save supplier</button></div></form></Card>
+  <Card title="Registered suppliers" info="Active suppliers available for purchasing."><Table columns={['Supplier','Contact','Phone','Status']}>{suppliers.map(s=><tr key={s.id}><td><strong>{s.name}</strong><small className="table-sub">{s.email||'No email'}</small></td><td>{s.contactName||'—'}</td><td>{s.phone||'—'}</td><td><Pill text={s.active?'active':'inactive'}/></td></tr>)}</Table>{!suppliers.length&&<Empty title="No suppliers yet"/>}</Card>
+  <Card title="Create purchase order" info={`New stock will be received into ${branchName}.`}><div className="form-grid"><Dropdown label="Supplier" value={supplierId} onChange={setSupplierId} items={[{id:'',name:'Select supplier'},...suppliers.map(s=>({id:s.id,name:s.name}))]}/><Input label="Order reference" value={reference} onChange={setReference} placeholder="Optional supplier reference"/><Dropdown label="Product" value={productId} onChange={v=>{setProductId(v);setVariantId('')}} items={[{id:'',name:'Choose product'},...products.map(p=>({id:p.id,name:p.name}))]}/><Dropdown label="Variant" value={variantId} onChange={setVariantId} items={(product?.variants||[]).map(v=>({id:v.id,name:v.name}))}/><Input label="Quantity" type="number" min="1" value={quantity} onChange={setQuantity}/><Input label="Unit cost (USD)" type="number" min="0" value={cost} onChange={setCost}/><label className="field wide">Notes<input value={notes} onChange={e=>setNotes(e.target.value)}/></label><div className="form-actions"><button className="btn btn-outline" disabled={!productId||!variantId} onClick={addLine} type="button">Add line</button></div></div>{lines.length>0&&<Table columns={['Product','Variant','Quantity','Unit cost','Remove']}>{lines.map((l,i)=><tr key={`${l.productId}_${l.variantId}`}><td>{l.name}</td><td>{l.variantName}</td><td>{l.quantity}</td><td>{money(l.costCents)}</td><td><button className="smallbtn" onClick={()=>setLines(v=>v.filter((_,n)=>n!==i))}>Remove</button></td></tr>)}</Table>}<div className="form-actions"><button className="btn btn-outline" disabled={busy||!supplierId||!lines.length} onClick={()=>void createOrder('draft')}>Save draft</button><button className="btn btn-primary" disabled={busy||!supplierId||!lines.length} onClick={()=>void createOrder('ordered')}>Submit order</button></div></Card>
+  <Card title="Purchase orders" info="Receive an ordered or drafted purchase to add stock and record the goods in inventory."><Table columns={['Reference','Supplier','Status','Created','Action']}>{orders.map(o=><tr key={o.id}><td><strong>{o.reference||o.id.slice(0,8)}</strong></td><td>{suppliers.find(s=>s.id===o.supplierId)?.name||o.supplierId.slice(0,8)}</td><td><Pill text={o.status}/></td><td>{timestamp(o.createdAt)}</td><td>{o.status==='draft'||o.status==='ordered'?<button className="smallbtn" disabled={busy} onClick={()=>void run('receivePurchaseOrder',{businessId:storeId,purchaseOrderId:o.id},'Purchase received and stock updated')}>Receive</button>:o.status==='received'?'Stock received':'—'}</td></tr>)}</Table>{!orders.length&&<Empty title="No purchase orders yet"/>}</Card>
+ </>;
 }
 function StockManager({storeId,branchId,products,rows,busy,run}:{storeId:string;branchId:string;products:Product[];rows:Inventory[];busy:boolean;run:Run}){
  const [productId,setProductId]=useState(''),[variantId,setVariantId]=useState(''),[quantity,setQuantity]=useState('0'),[threshold,setThreshold]=useState('5'),[scanCode,setScanCode]=useState(''),[scanMsg,setScanMsg]=useState('');
