@@ -30,6 +30,6 @@ export default function DayReport({businessId,branchId,branchName,canExport}:{bu
    <p className="report-sign">Cashier signature: ______________________ &nbsp; Manager: ______________________</p>
   </>}
   {canExport&&<div className="report-export no-print"><h3>Exports for your accountant</h3>
-   <div className="scanner-row"><label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><a className="btn btn-outline" href={`/api/export/sales.csv?${q}&from=${from}&to=${to}`}><Download size={16}/> Sales (CSV)</a><a className="btn btn-outline" href={`/api/export/stock.csv?${q}`}><Download size={16}/> Stock levels (CSV)</a></div></div>}
+   <div className="scanner-row"><label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><a className="btn btn-outline" download="sales.csv" href={`/api/export/sales.csv?${q}&from=${from}&to=${to}`}><Download size={16}/> Sales (CSV)</a><a className="btn btn-outline" download="stock-levels.csv" href={`/api/export/stock.csv?${q}`}><Download size={16}/> Stock levels (CSV)</a></div></div>}
  </section>
 }

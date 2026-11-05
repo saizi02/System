@@ -30,7 +30,7 @@ const navItems:{key:Section;name:string;icon:ReactNode;owner?:boolean;general?:b
  {key:'flags',name:'Flagged scans',icon:<FileWarning/>,general:true},
  {key:'qr',name:'Shop QR codes',icon:<QrCode/>,general:true},
  {key:'kiosks',name:'Kiosk devices',icon:<Tablet/>},
- {key:'reports',name:'Dashboard',icon:<BarChart3/>},
+ {key:'reports',name:'Reports',icon:<BarChart3/>},
  {key:'activity',name:'Activity log',icon:<Activity/>},
  {key:'settings',name:'Settings',icon:<Settings/>},
  {key:'account',name:'My account',icon:<UserCog/>},
