@@ -33,6 +33,11 @@ export async function action(name,input,req){
   if(input.status!==undefined){authorize(actor,['super_admin']);assert(['active','suspended'].includes(input.status),400,'Invalid status');add('status',input.status)}
   if(input.currency!==undefined){assert(currencies.includes(input.currency),400,'Invalid currency');add('currency',input.currency)}
   if(input.rates!==undefined)add('rates',JSON.stringify(validateRates(input.rates)));
+  if(input.address!==undefined)add('address',String(input.address).slice(0,300));
+  if(input.phone!==undefined)add('phone',String(input.phone).slice(0,60));
+  if(input.taxNumber!==undefined)add('tax_number',String(input.taxNumber).slice(0,80));
+  if(input.receiptFooter!==undefined)add('receipt_footer',String(input.receiptFooter).slice(0,300));
+  if(input.vatRate!==undefined){const rate=Number(input.vatRate);assert(Number.isFinite(rate)&&rate>=0&&rate<=100,400,'Invalid VAT rate');add('vat_rate',rate)}
   if(input.domain!==undefined){authorize(actor,['super_admin']);add('domain',String(input.domain).slice(0,120))}
   assert(patches.length>0,400,'Nothing to update');vals.push(id);const result=await sql(`UPDATE businesses SET ${patches.join(',')},updated_at=now() WHERE id=$${vals.length} RETURNING id`,vals);assert(result.rowCount,404,'Store not found');await audit(id,actor.id,'business.updated');return{ok:true};
  }
@@ -174,7 +179,23 @@ export async function action(name,input,req){
    await c.query('UPDATE orders SET status=$1,handled_by=$2,updated_at=now() WHERE id=$3',[name==='confirmCash'?'paid':'cancelled',actor.id,orderId]);await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[businessId,actor.id,name==='confirmCash'?'order.cash_confirmed':'order.cash_cancelled',JSON.stringify({orderId})]);return{ok:true};
   });
  }
- case 'updateFulfillment':{
+  case 'refundOrder':case 'voidOrder':{
+   const{businessId,branchId}=scope(input);authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);
+   const orderId=required(input.orderId,'order ID');const reason=required(input.reason,'reason',500);
+   const reversal=name==='refundOrder'?'refunded':'voided';
+   return transaction(async c=>{
+    const order=(await c.query('SELECT * FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 FOR UPDATE',[orderId,businessId,branchId])).rows[0];
+    assert(order,404,'Order not found');
+    assert(order.status==='paid'||(name==='voidOrder'&&order.status==='pending_cash'),409,'Only a paid sale or pending cash sale can be reversed');
+    for(const item of order.items.filter(()=>order.status==='paid')){
+     await c.query('INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=inventory.quantity+$5::int,updated_at=now()',[businessId,branchId,item.productId,item.variantId,item.quantity]);
+    }
+    await c.query("UPDATE orders SET status=$1,adjustment_reason=$2,adjusted_by=$3,adjusted_at=now(),updated_at=now() WHERE id=$4",[reversal,reason,actor.id,orderId]);
+    await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[businessId,actor.id,`order.${name==='refundOrder'?'refunded':'voided'}`,JSON.stringify({orderId,type:name==='refundOrder'?'refund':'void',reason,stockRestored:name==='voidOrder'&&order.status==='pending_cash'?0:order.items.map(i=>({productId:i.productId,variantId:i.variantId,quantity:i.quantity}))})]);
+    return{ok:true,status:reversal};
+   });
+  }
+  case 'updateFulfillment':{
   // Kitchen display and Cashier station share this one endpoint; the role rules live in helpers.canAdvance().
   const{businessId,branchId}=scope(input);authorize(actor,['cashier','kitchen','business_admin','super_admin'],businessId,branchId);
   const b=await one('SELECT profile FROM businesses WHERE id=$1',[businessId]);assert(b&&b.profile!=='grocery',409,'Only food and fashion use fulfillment');
