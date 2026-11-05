@@ -277,7 +277,7 @@ export default function Cashier() {
             <Menu />
           </button>
           <div className="breadcrumbs">
-            TILLORA <span>/</span> CASHIER <span>/</span>{" "}
+            TILLCORE <span>/</span> CASHIER <span>/</span>{" "}
             <b>{sectionNames[view]}</b>
           </div>
           <span className="toolbar-user">

@@ -27,12 +27,12 @@ export default function KioskApp(){
  useEffect(()=>{const receive=(e:Event)=>{e.preventDefault();setInstallPrompt(e as InstallPrompt)};window.addEventListener('beforeinstallprompt',receive);return()=>window.removeEventListener('beforeinstallprompt',receive)},[]);
  useEffect(()=>{const online=()=>setNetworkOnline(true),offline=()=>setNetworkOnline(false);window.addEventListener('online',online);window.addEventListener('offline',offline);return()=>{window.removeEventListener('online',online);window.removeEventListener('offline',offline)}},[]);
 
- // Make the installed app identify as "Tillora Kiosk" (own manifest, name, no scrolling/zoom gestures).
+ // Make the installed kiosk use its dedicated Tillcore manifest and title.
  useEffect(()=>{
   let link=document.querySelector<HTMLLinkElement>('link[rel="manifest"]');const created=!link;const previous=link?.getAttribute('href')||null;
   if(!link){link=document.createElement('link');link.rel='manifest';document.head.appendChild(link)}
   link.setAttribute('href','/kiosk.webmanifest');
-  const title=document.title;document.title='Tillora Kiosk';document.body.classList.add('kiosk-device');
+  const title=document.title;document.title='Tillcore Kiosk';document.body.classList.add('kiosk-device');
   return()=>{if(created)link!.remove();else if(previous)link!.setAttribute('href',previous);document.title=title;document.body.classList.remove('kiosk-device')};
  },[]);
  // Keep the screen awake while the kiosk is open.
@@ -81,7 +81,7 @@ function KioskSetup({message,onPair,fullButton,canInstall,onInstall}:{message:st
  const shown=code.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);const pretty=shown.length>4?`${shown.slice(0,4)}-${shown.slice(4)}`:shown;
  return <main className="kiosk-screen setup">{fullButton}<Brand locked/><span className="eyebrow">SET UP THIS KIOSK</span><h1>Pair this device with a store</h1>
   <p>An administrator creates the kiosk in <b>Admin → Kiosk devices</b> and gets a pairing code. Enter it here once; this device then opens straight into that store's self-service till.</p>
-  {canInstall&&<button className="btn btn-outline kiosk-install-button" type="button" onClick={()=>void onInstall()}><Expand size={18}/> Install Tillora Kiosk</button>}
+  {canInstall&&<button className="btn btn-outline kiosk-install-button" type="button" onClick={()=>void onInstall()}><Expand size={18}/> Install Tillcore Kiosk</button>}
   <form className="pair-form" onSubmit={e=>{e.preventDefault();setBusy(true);void onPair(shown).finally(()=>setBusy(false))}}>
    <input value={pretty} onChange={e=>setCode(e.target.value)} placeholder="ABCD-EFGH" autoComplete="off" autoCapitalize="characters" spellCheck={false} aria-label="Pairing code"/>
    <button className="btn btn-primary" disabled={busy||shown.length<8}><KeyRound size={18}/> {busy?'Pairing…':'Pair kiosk'}</button></form>

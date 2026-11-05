@@ -1,8 +1,8 @@
 {
   "id": "/kiosk",
-  "name": "Tillora Kiosk",
-  "short_name": "Tillora Kiosk",
-  "description": "Dedicated self-service kiosk for tablets and POS terminals, connected to the Tillora retail platform.",
+  "name": "Tillcore: A Multi-Store Self-Service Checkout",
+  "short_name": "Tillcore Kiosk",
+  "description": "Dedicated self-service kiosk for tablets and POS terminals, connected to Tillcore.",
   "start_url": "/kiosk",
   "scope": "/",
   "display": "fullscreen",

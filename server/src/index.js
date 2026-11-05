@@ -99,6 +99,6 @@ if(existsSync(join(staticRoot,'index.html'))){
 }
 app.use((req,res)=>res.status(404).json({error:'Not found'}));
 app.use((error,req,res,next)=>{const status=error instanceof HttpError?error.status:error.code==='23505'?409:error.code==='22P02'?400:error.code==='23503'?400:error instanceof multer.MulterError||error.message?.startsWith('Only JPEG')?400:500;const message=status===500?'Internal server error':error.code==='23505'?'That value already exists (for example, an account with this email)':error.message;console.error(`[${status}]`,error.message);res.status(status).json({error:message})});
-const server=app.listen(PORT,'0.0.0.0',()=>console.log(`SSTWAS ready on port ${PORT} · mode=${config.storeMode} · payments=${getProvider().name}${config.production?'':' · development'}`));
+const server=app.listen(PORT,'0.0.0.0',()=>console.log(`Tillcore ready on port ${PORT} · mode=${config.storeMode} · payments=${getProvider().name}${config.production?'':' · development'}`));
 setInterval(()=>{void sql('DELETE FROM sessions WHERE expires_at<now()').catch(()=>{})},3600000).unref();
 for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{console.log(`${sig}: shutting down`);server.close(()=>{void pool.end().finally(()=>process.exit(0))});setTimeout(()=>process.exit(1),10000).unref()});
