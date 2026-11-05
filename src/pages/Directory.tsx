@@ -31,9 +31,8 @@ function useInstallPrompt(){
 function HeroBackdrop({onFound}:{onFound:(count:number)=>void}){
   const [slides,setSlides]=useState<string[]>([]),[active,setActive]=useState(0);
   useEffect(()=>{
-    let alive=true;
-    const found:string[]=[];let pending=4;
-    for(let i=1;i<=4;i++){const url=`/hero/hero-${i}.jpg`;const img=new Image();img.onload=()=>{found.push(url);if(--pending===0&&alive){setSlides(found.sort());onFound(found.length)}};img.onerror=()=>{if(--pending===0&&alive){setSlides(found.sort());onFound(found.length)}};img.src=url}
+    let alive=true;const urls=['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQt3u9Ya4ToGXNPffKa1srJbouwsZCd6CbDHztiPeW_derV9NVlIr5gwfCT&s=10',...Array.from({length:4},(_,i)=>`/hero/hero-${i+1}.jpg`)];
+    Promise.all(urls.map(url=>new Promise<string|null>(resolve=>{const img=new Image();img.onload=()=>resolve(url);img.onerror=()=>resolve(null);img.src=url}))).then(results=>{if(!alive)return;const found=results.filter((url):url is string=>!!url);setSlides(found);onFound(found.length)});
     return()=>{alive=false};
   },[]);
   useEffect(()=>{if(slides.length<2||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;const t=setInterval(()=>setActive(a=>(a+1)%slides.length),7000);return()=>clearInterval(t)},[slides.length]);
