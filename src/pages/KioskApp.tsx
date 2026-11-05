@@ -4,6 +4,7 @@ import {call} from '../lib/api';
 import {clearKioskDevice,getKioskDevice,saveKioskDevice,type KioskDevice} from '../lib/kiosk';
 import {Brand} from '../components/UI';
 import Shop from './Shop';
+type InstallPrompt=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>};
 type Phase='checking'|'setup'|'ready'|'maintenance'|'unreachable';
 type ShopState='idle'|'shopping'|'checkout';
 /**
@@ -21,6 +22,9 @@ export default function KioskApp(){
  const stateRef=useRef<ShopState>('idle');stateRef.current=shopState;
  const [full,setFull]=useState(!!document.fullscreenElement||window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
  const [networkOnline,setNetworkOnline]=useState(()=>navigator.onLine);
+ const [installPrompt,setInstallPrompt]=useState<InstallPrompt|null>(null);
+ const [installed,setInstalled]=useState(()=>window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+ useEffect(()=>{const receive=(e:Event)=>{e.preventDefault();setInstallPrompt(e as InstallPrompt)};window.addEventListener('beforeinstallprompt',receive);return()=>window.removeEventListener('beforeinstallprompt',receive)},[]);
  useEffect(()=>{const online=()=>setNetworkOnline(true),offline=()=>setNetworkOnline(false);window.addEventListener('online',online);window.addEventListener('offline',offline);return()=>{window.removeEventListener('online',online);window.removeEventListener('offline',offline)}},[]);
 
  // Make the installed app identify as "Tillora Kiosk" (own manifest, name, no scrolling/zoom gestures).
@@ -55,7 +59,7 @@ export default function KioskApp(){
 
  const pair=useCallback(async(code:string)=>{
   setMessage('');
-  try{const r=await call<{deviceToken:string;kiosk:{id:string;name:string;businessId:string;branchId:string}}>('pairKiosk',{code});
+  try{  const r=await call<{deviceToken:string;kiosk:{id:string;name:string;businessId:string;branchId:string;profile:KioskDevice['profile']}}>('pairKiosk',{code});
    const d:KioskDevice={token:r.deviceToken,...r.kiosk};saveKioskDevice(d);setDevice(d);setPhase('checking');window.history.replaceState(null,'','/kiosk')}
   catch(e){setMessage((e as Error).message);setPhase('setup')}
  },[]);
@@ -63,19 +67,21 @@ export default function KioskApp(){
  useEffect(()=>{const code=new URLSearchParams(window.location.search).get('pair');if(code&&!getKioskDevice())void pair(code)},[pair]);
 
  const goFull=()=>{void document.documentElement.requestFullscreen?.().catch(()=>{})};
+ const install=async()=>{if(!installPrompt)return;await installPrompt.prompt();const choice=await installPrompt.userChoice;if(choice.outcome==='accepted')setInstalled(true);setInstallPrompt(null)};
  const fullButton=!full&&typeof document.documentElement.requestFullscreen==='function'?<button className="kiosk-fullscreen" onClick={goFull}><Expand size={16}/> Full screen</button>:null;
 
- if(phase==='setup')return <KioskSetup message={message} onPair={pair} fullButton={fullButton}/>;
+ if(phase==='setup')return <KioskSetup message={message} onPair={pair} fullButton={fullButton} canInstall={!!installPrompt&&!installed} onInstall={install}/>;
  if(phase==='checking'||!device)return <main className="kiosk-screen"><Brand locked/><p>Connecting to the store system…</p></main>;
  if(phase==='unreachable'||!networkOnline)return <main className="kiosk-screen kiosk-error-screen" role="alert"><Brand locked/><div className="kiosk-error-icon"><PlugZap size={44}/></div><span className="eyebrow">CONNECTION PROBLEM</span><h1>{networkOnline?'The store system is unavailable':'The kiosk has lost internet connection'}</h1><p>{networkOnline?'We are trying to reconnect automatically. If payment is not available, please wait before trying again.':'You can keep the kiosk screen open, but shopping and payments need internet access.'}</p><ol className="kiosk-recovery"><li>Check that the Wi-Fi is connected, or that the network cable is plugged in.</li><li>Wait 30 seconds and try the connection again.</li><li>If it still does not work, ask a staff member to restart the kiosk connection.</li></ol><button className="btn btn-primary" onClick={()=>{setNetworkOnline(navigator.onLine);void beat()}}>Retry connection</button></main>;
  if(phase==='maintenance')return <main className="kiosk-screen maintenance"><Brand locked/><Wrench size={46}/><h1>Kiosk temporarily out of service</h1><p>Please see a member of staff, or use another till.</p></main>;
- return <>{fullButton}<Shop key={device.token} mode="kiosk" scope={{businessId:device.businessId,branchId:device.branchId,deviceToken:device.token}} onState={setShopState}/></>;
+ return <>{fullButton}{!installed&&!installPrompt&&<button className="kiosk-install" onClick={goFull}><Expand size={16}/> Enter full screen</button>}<Shop key={device.token} mode="kiosk" scope={{businessId:device.businessId,branchId:device.branchId,deviceToken:device.token}} onState={setShopState}/></>;
 }
-function KioskSetup({message,onPair,fullButton}:{message:string;onPair:(code:string)=>Promise<void>;fullButton:React.ReactNode}){
+function KioskSetup({message,onPair,fullButton,canInstall,onInstall}:{message:string;onPair:(code:string)=>Promise<void>;fullButton:React.ReactNode;canInstall:boolean;onInstall:()=>Promise<void>}){
  const [code,setCode]=useState(''),[busy,setBusy]=useState(false);
  const shown=code.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);const pretty=shown.length>4?`${shown.slice(0,4)}-${shown.slice(4)}`:shown;
  return <main className="kiosk-screen setup">{fullButton}<Brand locked/><span className="eyebrow">SET UP THIS KIOSK</span><h1>Pair this device with a store</h1>
   <p>An administrator creates the kiosk in <b>Admin → Kiosk devices</b> and gets a pairing code. Enter it here once; this device then opens straight into that store's self-service till.</p>
+  {canInstall&&<button className="btn btn-outline kiosk-install-button" type="button" onClick={()=>void onInstall()}><Expand size={18}/> Install Tillora Kiosk</button>}
   <form className="pair-form" onSubmit={e=>{e.preventDefault();setBusy(true);void onPair(shown).finally(()=>setBusy(false))}}>
    <input value={pretty} onChange={e=>setCode(e.target.value)} placeholder="ABCD-EFGH" autoComplete="off" autoCapitalize="characters" spellCheck={false} aria-label="Pairing code"/>
    <button className="btn btn-primary" disabled={busy||shown.length<8}><KeyRound size={18}/> {busy?'Pairing…':'Pair kiosk'}</button></form>

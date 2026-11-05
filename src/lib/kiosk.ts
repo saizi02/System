@@ -1,5 +1,5 @@
 /** A tablet/POS that has been paired with the store system. The token lives only on that device. */
-export type KioskDevice={token:string;id:string;name:string;businessId:string;branchId:string};
+export type KioskDevice={token:string;id:string;name:string;businessId:string;branchId:string;profile:'grocery'|'food'|'clothing'};
 const KEY='sstwas_kiosk_device';
 export const getKioskDevice=():KioskDevice|null=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'null');return v&&v.token&&v.businessId&&v.branchId?v as KioskDevice:null}catch{return null}};
 export const saveKioskDevice=(d:KioskDevice)=>{try{localStorage.setItem(KEY,JSON.stringify(d))}catch{/* private mode: pairing will not persist */}};

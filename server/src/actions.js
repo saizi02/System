@@ -171,20 +171,20 @@ export async function action(name,input,req){
  case 'pairKiosk':{
   // Public: called by the tablet itself with the one-time code an admin created. Returns a long-lived device token.
   assert(!pairBlocked(req.ip),429,'Too many attempts. Wait a few minutes and try again.');
-  const k=await one('SELECT id,name,business_id,branch_id FROM kiosk_devices WHERE pairing_hash=$1 AND pairing_expires>now()',[codeHash(input.code)]);
+  const k=await one('SELECT k.id,k.name,k.business_id,k.branch_id,b.profile FROM kiosk_devices k JOIN businesses b ON b.id=k.business_id WHERE k.pairing_hash=$1 AND k.pairing_expires>now()',[codeHash(input.code)]);
   if(!k){pairFailed(req.ip);throw new HttpError(404,'Pairing code not recognised or expired. Ask an admin for a new one.')}
   const token=randomBytes(32).toString('base64url');
   await sql("UPDATE kiosk_devices SET token_hash=$1,paired_at=now(),pairing_hash=NULL,pairing_expires=NULL,last_seen=now(),state='idle',user_agent=$2 WHERE id=$3",[tokenHash(token),String(req.get('user-agent')||'').slice(0,200),k.id]);
   await audit(k.business_id,null,'kiosk.paired',{kioskId:k.id,name:k.name});
-  return{deviceToken:token,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id}};
+  return{deviceToken:token,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id,profile:k.profile}};
  }
  case 'kioskHeartbeat':{
   // Public: the kiosk app calls this every ~20 s. It keeps the Admin/Cashier "online" indicator fresh and tells the tablet if it was reset or put into maintenance.
   const token=typeof input.deviceToken==='string'?input.deviceToken:'';if(!token)return{paired:false};
   const state=['idle','shopping','checkout'].includes(input.state)?input.state:'idle';
-  const k=await one('UPDATE kiosk_devices SET last_seen=now(),state=$2 WHERE token_hash=$1 RETURNING id,name,business_id,branch_id,enabled',[tokenHash(token),state]);
+  const k=await one("UPDATE kiosk_devices k SET last_seen=now(),state=$2 FROM businesses b WHERE k.token_hash=$1 AND b.id=k.business_id RETURNING k.id,k.name,k.business_id,k.branch_id,k.enabled,b.profile",[tokenHash(token),state]);
   if(!k)return{paired:false};
-  return{paired:true,enabled:k.enabled,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id}};
+  return{paired:true,enabled:k.enabled,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id,profile:k.profile}};
  }
  case 'checkout':{
   const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','card','bank'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['super_admin','business_admin','cashier'],businessId,branchId);
