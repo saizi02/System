@@ -8,7 +8,7 @@ export const useSession=()=>useContext(ctx);
 export function AuthProvider({children}:{children:ReactNode}){
  const [user,setUser]=useState<StaffUser|null>(null),[loading,setLoading]=useState(true),[connectionError,setConnectionError]=useState<string|null>(null);
  const refresh=async()=>{const session=await apiRequest<{user:StaffUser|null}>('/auth/me');setUser(session.user);setConnectionError(null)};
- useEffect(()=>{let mounted=true;apiRequest<{user:StaffUser|null}>('/auth/me').then(v=>{if(mounted){setUser(v.user);setConnectionError(null)}}).catch(e=>{console.warn('API session unavailable',e);if(mounted)setConnectionError('Cannot connect to SSTWAS Node.js API. Start npm run api:dev and verify PostgreSQL is running.')}).finally(()=>{if(mounted)setLoading(false)});return()=>{mounted=false}},[]);
+ useEffect(()=>{let mounted=true;apiRequest<{user:StaffUser|null}>('/auth/me').then(v=>{if(mounted){setUser(v.user);setConnectionError(null)}}).catch(e=>{console.warn('API session unavailable',e);if(mounted)setConnectionError('Cannot connect to the Tillora Node.js API. Start npm run api:dev and verify PostgreSQL is running.')}).finally(()=>{if(mounted)setLoading(false)});return()=>{mounted=false}},[]);
  // `portal` makes the server accept the sign-in only if the account belongs to that standalone dashboard.
  const login=async(email:string,password:string,portal?:Portal)=>{const result=await apiRequest<{user:StaffUser}>('/auth/login',{email,password,...(portal?{portal}:{})});setUser(result.user);setConnectionError(null);return result.user};
  const logout=async()=>{await apiRequest('/auth/logout',{});setUser(null)};

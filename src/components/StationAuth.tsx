@@ -14,7 +14,7 @@ const meta:Record<Portal,{icon:ReactNode;tag:string;blurb:string;accent:string}>
 export function StationLogin({portal}:{portal:Portal}){
  const session=useSession(),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);const m=meta[portal];
  const submit=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);setError('');try{await session.login(email,password,portal)}catch(ex){setError((ex as Error).message)}finally{setBusy(false)}};
- return <main className={'auth-page station-auth '+m.accent}><div className="auth-left"><Brand/><span className="eyebrow station-tag">{m.tag}</span><h1>{portalName[portal]}<br/><em>SSTWAS 2.0</em></h1><p>{m.blurb}</p><div className="auth-decor">{m.icon}</div></div>
+ return <main className={'auth-page station-auth '+m.accent}><div className="auth-left"><Brand/><span className="eyebrow station-tag">{m.tag}</span><h1>{portalName[portal]}<br/><em>Tillora Retail</em></h1><p>{m.blurb}</p><div className="auth-decor">{m.icon}</div></div>
   <div className="auth-right"><form onSubmit={e=>void submit(e)} className="auth-form"><span className="eyebrow">SECURE STAFF ACCESS</span><h2>Sign in to the {portalName[portal].toLowerCase()}</h2><p>Use the account your administrator created for this station.</p>
    <label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username"/></label>
    <label>Password<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label>

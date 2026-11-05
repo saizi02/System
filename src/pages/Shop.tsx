@@ -87,7 +87,7 @@ export default function Shop({mode='mobile',scope,onState}:{mode?:'mobile'|'kios
   method={method}
   totalMinor={displayTotal}
   currency={currency}
-  storeName={business?.name||'SSTWAS Store'}
+  storeName={business?.name||'Tillora Store'}
   online={online}
   busy={busy}
   onClose={()=>setPaymentDialog(false)}

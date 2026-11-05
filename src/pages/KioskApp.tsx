@@ -21,12 +21,12 @@ export default function KioskApp(){
  const stateRef=useRef<ShopState>('idle');stateRef.current=shopState;
  const [full,setFull]=useState(!!document.fullscreenElement||window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
 
- // Make the installed app identify as "SSTWAS Kiosk" (own manifest, name, no scrolling/zoom gestures).
+ // Make the installed app identify as "Tillora Kiosk" (own manifest, name, no scrolling/zoom gestures).
  useEffect(()=>{
   let link=document.querySelector<HTMLLinkElement>('link[rel="manifest"]');const created=!link;const previous=link?.getAttribute('href')||null;
   if(!link){link=document.createElement('link');link.rel='manifest';document.head.appendChild(link)}
   link.setAttribute('href','/kiosk.webmanifest');
-  const title=document.title;document.title='SSTWAS Kiosk';document.body.classList.add('kiosk-device');
+  const title=document.title;document.title='Tillora Kiosk';document.body.classList.add('kiosk-device');
   return()=>{if(created)link!.remove();else if(previous)link!.setAttribute('href',previous);document.title=title;document.body.classList.remove('kiosk-device')};
  },[]);
  // Keep the screen awake while the kiosk is open.

@@ -1,8 +1,8 @@
 {
   "id": "/kiosk",
-  "name": "SSTWAS Kiosk",
-  "short_name": "SSTWAS Kiosk",
-  "description": "Dedicated self-service kiosk for tablets and POS terminals, connected to the SSTWAS store system.",
+  "name": "Tillora Kiosk",
+  "short_name": "Tillora Kiosk",
+  "description": "Dedicated self-service kiosk for tablets and POS terminals, connected to the Tillora retail platform.",
   "start_url": "/kiosk",
   "scope": "/",
   "display": "fullscreen",
