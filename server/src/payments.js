@@ -8,7 +8,7 @@ import {HttpError} from './helpers.js';
  *  Keep secrets in environment variables, never in the browser. */
 const simulated={
  name:'simulated',
- methods:['cash','ecocash','card'],
+ methods:['cash','ecocash','card','bank'],
  async authorize({method,demoOutcome}){
   if(method==='cash')return{outcome:'pending',reference:null};
   return{outcome:demoOutcome==='declined'?'declined':'approved',reference:'SIM-'+randomBytes(5).toString('hex').toUpperCase()}

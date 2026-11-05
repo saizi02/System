@@ -144,7 +144,7 @@ export async function action(name,input,req){
   return{paired:true,enabled:k.enabled,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id}};
  }
  case 'checkout':{
-  const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','card'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['super_admin','business_admin','cashier'],businessId,branchId);
+  const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','card','bank'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['super_admin','business_admin','cashier'],businessId,branchId);
   const currency=input.currency||'USD';assert(currencies.includes(currency),400,'Invalid currency');const key=required(input.idempotencyKey,'checkout key',100);assert(/^[a-zA-Z0-9-]{10,100}$/.test(key),400,'Invalid idempotency key');
   // Lock the customer's session row: ensures identical keys never create multiple orders on concurrent retries.
   return transaction(async c=>{

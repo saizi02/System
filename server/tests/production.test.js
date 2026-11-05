@@ -28,9 +28,9 @@ test('production refuses to start without strong secrets and https origin',()=>{
 });
 test('simulated card payments are disabled in production unless explicitly allowed',()=>{
  const code="import('./src/payments.js').then(m=>console.log(m.enabledMethods().join(',')+'|'+m.getProvider().name))";
- assert.equal(run({},code).stdout.trim(),'cash,ecocash,card|simulated');
+ assert.equal(run({},code).stdout.trim(),'cash,ecocash,card,bank|simulated');
  assert.equal(run({NODE_ENV:'production'},code).stdout.trim(),'cash|cash-only');
- assert.equal(run({NODE_ENV:'production',ALLOW_SIMULATED_PAYMENTS:'true'},code).stdout.trim(),'cash,ecocash,card|simulated');
+ assert.equal(run({NODE_ENV:'production',ALLOW_SIMULATED_PAYMENTS:'true'},code).stdout.trim(),'cash,ecocash,card,bank|simulated');
  assert.match(run({PAYMENT_PROVIDER:'nope'},code).stderr,/Unknown PAYMENT_PROVIDER/);
 });
 test('declined simulated payments and cash outcomes',async()=>{

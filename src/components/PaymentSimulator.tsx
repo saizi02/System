@@ -1,12 +1,12 @@
 import {useEffect, useState} from 'react';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Clock3, CreditCard,
-  LockKeyhole, MonitorCheck, ShieldCheck, Smartphone, Store, Wallet,
+  Landmark, LockKeyhole, MonitorCheck, ShieldCheck, Smartphone, Store, Wallet,
 } from 'lucide-react';
 import {money} from '../lib/types';
 import './PaymentSimulator.css';
 
-type Method = 'ecocash' | 'card' | 'cash';
+type Method = 'ecocash' | 'bank' | 'card' | 'cash';
 type Decision = 'approved' | 'declined';
 type Stage = 'review' | 'awaiting' | 'processing';
 
@@ -22,7 +22,7 @@ type Props = {
 };
 
 const labels: Record<Method, string> = {
-  ecocash: 'EcoCash', card: 'Card terminal', cash: 'Cash at cashier',
+  ecocash: 'EcoCash', bank: 'Bank transfer', card: 'Card terminal', cash: 'Cash at cashier',
 };
 
 /**
@@ -75,16 +75,18 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
       <div className="payment-sim-layout">
         <div className="payment-sim-left">
           <div className="payment-sim-method-icon">
-            {method==='ecocash'?<Smartphone size={29}/>:method==='card'?<CreditCard size={29}/>:<Wallet size={29}/>}
+            {method==='ecocash'?<Smartphone size={29}/>:method==='bank'?<Landmark size={29}/>:method==='card'?<CreditCard size={29}/>:<Wallet size={29}/>}
           </div>
           <span className="payment-sim-eyebrow">CHECKOUT · {labels[method].toUpperCase()}</span>
           <h2 id="demo-payment-heading">
             {stage==='processing'?'Processing demo transaction':
               method==='ecocash'?'Mobile money checkout':
+              method==='bank'?'Bank transfer checkout':
               method==='card'?'Card payment terminal':'Pay at the cashier'}
           </h2>
           <p className="payment-sim-subheading">
             {method==='ecocash'?'Experience a realistic EcoCash-style payment request without sending an actual phone prompt.':
+             method==='bank'?'Complete a simulated bank transfer confirmation without sharing account details.':
              method==='card'?'A virtual card terminal for the university demonstration. Never enter real card details.':
              'Your order will remain pending until a cashier confirms the simulated cash payment.'}
           </p>
@@ -117,26 +119,28 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
           </div>: stage==='review'?<>
             <div className="payment-sim-terminal-content">
               <span className="payment-sim-count">STEP 01 / {method==='cash'?'01':'02'}</span>
-              <h3>{method==='ecocash'?'Send a demo payment request':method==='card'?'Present a virtual test card':'Create a cash order'}</h3>
+              <h3>{method==='ecocash'?'Send a demo payment request':method==='bank'?'Start a simulated bank transfer':method==='card'?'Present a virtual test card':'Create a cash order'}</h3>
               <p>{method==='ecocash'?'A pretend EcoCash authorisation screen will appear, where you can approve or reject the test transaction.':
+                  method==='bank'?'A simulated bank approval screen will appear. No account details, PIN or real transfer is required.':
                   method==='card'?'Tap below to imitate presenting a test card to the terminal.':
                   'The cashier will locate this order in the Cashier module and confirm the cash transaction.'}</p>
               <div className="payment-sim-indicator"><LockKeyhole size={17}/> No real gateway connected</div>
             </div>
             <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked} onClick={start}>
-              {method==='ecocash'?'Send simulated EcoCash request':method==='card'?'Present demo card':'Create pending cash order'}<ArrowRight size={18}/>
+              {method==='ecocash'?'Send simulated EcoCash request':method==='bank'?'Start simulated bank transfer':method==='card'?'Present demo card':'Create pending cash order'}<ArrowRight size={18}/>
             </button>
           </>:<>
             <div className="payment-sim-terminal-content">
               <span className="payment-sim-count">STEP 02 / 02</span>
               <div className="payment-sim-waiting-icon"><Smartphone size={28}/></div>
-              <h3>{method==='ecocash'?'Payment request sent (demo)':'Authorisation required (demo)'}</h3>
+              <h3>{method==='ecocash'?'Payment request sent (demo)':method==='bank'?'Bank transfer awaiting approval (demo)':'Authorisation required (demo)'}</h3>
               <p>{method==='ecocash'?'A real EcoCash customer would approve this request on their phone. Here, choose the simulated outcome below.':
+                  method==='bank'?'A real bank payment would require customer approval. Choose the simulated bank outcome below.':
                   'A real card terminal would contact the payment provider. Choose the simulated authorisation outcome below.'}</p>
               <div className="payment-sim-indicator"><CircleAlert size={17}/> Nothing has been charged or transferred</div>
             </div>
             <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked} onClick={()=>void submit('approved')}>
-              <CheckCircle2 size={18}/> {method==='ecocash'?'Approve demo prompt':'Authorise demo card'}
+              <CheckCircle2 size={18}/> {method==='ecocash'?'Approve demo prompt':method==='bank'?'Approve demo transfer':'Authorise demo card'}
             </button>
             <button className="btn btn-outline payment-sim-secondary-action" disabled={!online||locked} onClick={()=>void submit('declined')}>Decline simulated payment</button>
             <button className="payment-sim-back" disabled={locked} onClick={()=>setStage('review')}><ArrowLeft size={15}/> Back to review</button>
