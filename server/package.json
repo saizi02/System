@@ -10,6 +10,7 @@
     "db:migrate": "node scripts/migrate.js",
     "bootstrap:admin": "node scripts/bootstrap-admin.js",
     "db:seed": "node scripts/seed.js",
+    "bootstrap:store": "node scripts/bootstrap-store.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
