@@ -8,7 +8,7 @@ import './PaymentSimulator.css';
 
 type Method = 'ecocash' | 'bank' | 'card' | 'cash';
 type Decision = 'approved' | 'declined';
-type Stage = 'review' | 'awaiting' | 'processing';
+type Stage = 'review' | 'ecocash-details' | 'ecocash-prompt' | 'ecocash-pin' | 'awaiting' | 'processing';
 
 type Props = {
   method: Method;
@@ -33,6 +33,8 @@ const labels: Record<Method, string> = {
 export default function PaymentSimulator({method,totalMinor,currency,storeName,busy,online,onClose,onDecision}:Props){
   const [stage,setStage] = useState<Stage>('review');
   const [localError,setLocalError] = useState('');
+  const [ecoPhone,setEcoPhone] = useState('077 000 0000');
+  const [ecoPin,setEcoPin] = useState('');
   const locked = busy || stage === 'processing';
 
   useEffect(()=>{
@@ -45,8 +47,11 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
     if(!online)return;
     setLocalError('');
     if(method==='cash') { void submit('approved'); return; }
+    if(method==='ecocash') { setStage('ecocash-details'); return; }
     setStage('awaiting');
   };
+
+  const ecoPhoneValid = /^[0-9 +()-]{9,16}$/.test(ecoPhone.trim());
 
   const submit = async(decision:Decision) => {
     if(locked || !online)return;
@@ -129,6 +134,71 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
             <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked} onClick={start}>
               {method==='ecocash'?'Send EcoCash request':method==='bank'?'Start bank transfer':method==='card'?'Continue to card payment':'Create pending cash order'}<ArrowRight size={18}/>
             </button>
+          </>: stage==='ecocash-details'?<>
+            <div className="payment-sim-terminal-content">
+              <span className="payment-sim-count">ECOCASH · STEP 01 / 03</span>
+              <h3>Enter EcoCash number</h3>
+              <p>Use a presentation number only. This screen does not contact EcoCash and does not store the number.</p>
+              <label className="payment-sim-input-label" htmlFor="eco-presentation-phone">
+                EcoCash mobile number
+                <input
+                  id="eco-presentation-phone"
+                  className="payment-sim-input"
+                  value={ecoPhone}
+                  maxLength={16}
+                  inputMode="tel"
+                  onChange={e=>setEcoPhone(e.target.value)}
+                />
+              </label>
+              <div className="payment-sim-indicator"><LockKeyhole size={17}/> Presentation details · no real wallet requested</div>
+            </div>
+            <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked||!ecoPhoneValid} onClick={()=>setStage('ecocash-prompt')}>
+              Send presentation request <ArrowRight size={18}/>
+            </button>
+            <button className="payment-sim-back" onClick={()=>setStage('review')}><ArrowLeft size={15}/> Back</button>
+          </>: stage==='ecocash-prompt'?<>
+            <div className="payment-sim-terminal-content">
+              <span className="payment-sim-count">ECOCASH · STEP 02 / 03</span>
+              <div className="payment-sim-waiting-icon"><Smartphone size={28}/></div>
+              <h3>Check your EcoCash prompt</h3>
+              <p>On a real phone, the EcoCash prompt would ask you to approve this payment. In this demonstration, continue to the presentation approval screen.</p>
+              <div className="payment-sim-request-summary">
+                <span>Merchant</span><strong>{storeName}</strong>
+                <span>Amount</span><strong>{money(totalMinor,currency)}</strong>
+                <span>Number</span><strong>{ecoPhone}</strong>
+              </div>
+              <div className="payment-sim-indicator"><CircleAlert size={17}/> No prompt has been sent to this number</div>
+            </div>
+            <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked} onClick={()=>setStage('ecocash-pin')}>
+              Continue on presentation phone <ArrowRight size={18}/>
+            </button>
+            <button className="payment-sim-back" onClick={()=>setStage('ecocash-details')}><ArrowLeft size={15}/> Change number</button>
+          </>: stage==='ecocash-pin'?<>
+            <div className="payment-sim-terminal-content">
+              <span className="payment-sim-count">ECOCASH · STEP 03 / 03</span>
+              <h3>Enter demo PIN</h3>
+              <p>Enter four fictional digits to demonstrate wallet approval. Do not enter a real EcoCash PIN or any other password.</p>
+              <label className="payment-sim-input-label" htmlFor="eco-presentation-pin">
+                Presentation PIN
+                <input
+                  id="eco-presentation-pin"
+                  className="payment-sim-pin-input"
+                  value={ecoPin}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  autoComplete="off"
+                  placeholder="••••"
+                  onChange={e=>setEcoPin(e.target.value.replace(/\D/g,'').slice(0,4))}
+                />
+              </label>
+              <div className="payment-sim-indicator"><ShieldCheck size={17}/> Demo PIN is discarded after confirmation</div>
+            </div>
+            <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked||ecoPin.length!==4} onClick={()=>{setEcoPin('');void submit('approved');}}>
+              <CheckCircle2 size={18}/> Approve presentation payment
+            </button>
+            <button className="btn btn-outline payment-sim-secondary-action" disabled={!online||locked} onClick={()=>{setEcoPin('');void submit('declined')}}>Cancel payment</button>
+            <button className="payment-sim-back" onClick={()=>{setEcoPin('');setStage('ecocash-prompt')}}><ArrowLeft size={15}/> Back to prompt</button>
           </>:<>
             <div className="payment-sim-terminal-content">
               <span className="payment-sim-count">STEP 02 / 02</span>
