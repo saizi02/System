@@ -1,4 +1,4 @@
-import {pool} from '../src/db.js';
+import {migrationPool as pool} from '../src/db.js';
 import {readdirSync,readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {resolve,dirname} from 'node:path';
@@ -18,6 +18,8 @@ try{
  }
  if(!count)console.log('Database schema is up to date.');
 }catch(err){
- console.error('Migration failed:',err.stack||err.message||String(err));
+ const detail=err?.stack||err?.message||String(err);
+ console.error(`Migration failed: ${detail}`);
+ if(err?.code)console.error(`Database error code: ${err.code}`);
  process.exitCode=1;
 }finally{await pool.end()}

@@ -45,9 +45,13 @@ Camera features and "install as app" need HTTPS. Set `DOMAIN=till.local` (any na
 
 ## Render deployment
 
-The repository includes `render.yaml` as a Render Blueprint. In the Render dashboard, choose **New > Blueprint**, select this repository, and create the resources. The Blueprint provisions PostgreSQL and supplies its connection string automatically as `DATABASE_URL`.
+The repository includes `render.yaml` as a Render Blueprint and uses the Neon PostgreSQL database configured in `neon.ts`.
 
-When prompted, set `APP_ORIGIN` to the exact public HTTPS URL, for example `https://sstwas.onrender.com`. Render generates `SESSION_SECRET` automatically. For a single-store deployment, set `STORE_MODE=single` and `STORE_ID` to the store UUID.
+1. Push the latest repository changes to GitHub.
+2. In Render, choose **New > Blueprint**, select this repository, and create the resources.
+3. In the service Environment settings, enter the Neon pooled connection string as `DATABASE_URL` and the direct connection string as `DATABASE_URL_UNPOOLED`.
+4. Optionally set `APP_ORIGIN` to the exact public HTTPS URL, for example `https://sstwas.onrender.com`. Render provides `RENDER_EXTERNAL_URL` automatically, so this is only needed for a custom domain.
+5. Render generates `SESSION_SECRET` automatically. For a single-store deployment, set `STORE_MODE=single` and `STORE_ID` to the store UUID.
 
 ## 5. Hardware
 - **Kiosk:** tablet or touchscreen PC, set to never sleep, running the installed kiosk app (pair it in Admin, Kiosks). Connect the **barcode scanner** by USB or Bluetooth (see `BARCODE-SCANNER.md`). Grocery kiosks have no camera scanning; the scanner and an on-screen keypad are used.

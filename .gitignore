@@ -9,3 +9,4 @@ server/uploads/
 /backups/
 *.log
 .DS_Store
+.neon

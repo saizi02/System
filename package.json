@@ -17,6 +17,8 @@
     "test": "npm --prefix server test"
   },
   "dependencies": {
+    "@neon/config": "^1.11.3",
+    "@neon/env": "^1.6.15",
     "@zxing/browser": "^0.1.5",
     "lucide-react": "^0.468.0",
     "qrcode.react": "^4.2.0",

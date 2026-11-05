@@ -1,8 +1,3 @@
-databases:
-  - name: sstwas-postgres
-    databaseName: sstwas
-    plan: free
-
 services:
   - type: web
     name: sstwas
@@ -11,9 +6,9 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: sstwas-postgres
-          property: connectionString
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
