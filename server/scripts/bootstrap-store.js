@@ -2,6 +2,7 @@ import {pool,transaction} from '../src/db.js';
 
 const storeName='Chizzyboi Stores';
 const foodStoreName='Chizzyboi Food';
+const fashionStoreName='Chizzyboi Fashion';
 const products=[
  ['White Bread','Bakery',145],
  ['Fresh Milk 1L','Dairy',180],
@@ -25,6 +26,18 @@ const meals=[
  ['Vegetable Rice Bowl','Vegetarian',500],
  ['Fish & Chips','Main Meals',750],
  ['Chocolate Cake Slice','Desserts',280]
+];
+const fashionProducts=[
+ ['Classic Cotton T-Shirt','Tops',950],
+ ['Slim Fit Jeans','Bottoms',2750],
+ ['Casual Hoodie','Outerwear',3500],
+ ['Summer Dress','Dresses',2200],
+ ['Leather Belt','Accessories',850],
+ ['Sneakers','Footwear',3200],
+ ['Formal Shirt','Tops',1800],
+ ['Track Pants','Bottoms',1900],
+ ['Baseball Cap','Accessories',650],
+ ['Rain Jacket','Outerwear',2950]
 ];
 
 async function bootstrapStore(c,name,profile,starterProducts){
@@ -52,9 +65,11 @@ try{
  await transaction(async c=>{
   await bootstrapStore(c,storeName,'grocery',products);
   await bootstrapStore(c,foodStoreName,'food',meals);
+  await bootstrapStore(c,fashionStoreName,'clothing',fashionProducts);
  });
  console.log(`Store ${storeName} has ${products.length} starter products.`);
  console.log(`Food store ${foodStoreName} has ${meals.length} starter meals.`);
+ console.log(`Fashion store ${fashionStoreName} has ${fashionProducts.length} starter products.`);
 }catch(error){
  console.error('Store bootstrap failed:',error.message);
  process.exitCode=1;
