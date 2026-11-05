@@ -23,8 +23,13 @@ export async function action(name,input,req){
  switch(name){
  case 'createBusiness':{
   authorize(actor,['super_admin']);const n=required(input.name,'store name');assert(profiles.includes(input.profile),400,'Invalid shop profile');
+  const existing=await one('SELECT id FROM businesses WHERE lower(trim(name))=lower($1) LIMIT 1',[n]);assert(!existing,409,`A store named "${n}" already exists`);
   if(config.storeMode==='single')assert(!(await one('SELECT 1 x FROM businesses LIMIT 1')),409,'This installation is locked to a single store (STORE_MODE=single) and its store already exists.');
-  const out=await transaction(async c=>{const b=(await c.query('INSERT INTO businesses(name,profile) VALUES($1,$2) RETURNING id',[n,input.profile])).rows[0];const r=(await c.query("INSERT INTO branches(business_id,name) VALUES($1,'Main branch') RETURNING id",[b.id])).rows[0];return{businessId:b.id,branchId:r.id}});
+  const branchName=required(input.branchName||'Main branch','branch name');
+  const address=String(input.address||'').trim().slice(0,300),phone=String(input.phone||'').trim().slice(0,60),taxNumber=String(input.taxNumber||'').trim().slice(0,80),receiptFooter=String(input.receiptFooter||'').trim().slice(0,300);
+  const currency=currencies.includes(input.currency)?input.currency:'USD';
+  const vatRate=Number(input.vatRate??0);assert(Number.isFinite(vatRate)&&vatRate>=0&&vatRate<=100,400,'Invalid VAT rate');
+  const out=await transaction(async c=>{const b=(await c.query('INSERT INTO businesses(name,profile,address,phone,tax_number,receipt_footer,vat_rate,currency) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',[n,input.profile,address,phone,taxNumber,receiptFooter,vatRate,currency])).rows[0];const r=(await c.query('INSERT INTO branches(business_id,name) VALUES($1,$2) RETURNING id',[b.id,branchName])).rows[0];return{businessId:b.id,branchId:r.id}});
   await audit(out.businessId,actor.id,'business.created',{...out,name:n,profile:input.profile});return out;
  }
  case 'updateBusiness':{
