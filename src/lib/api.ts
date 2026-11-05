@@ -1,6 +1,8 @@
 /** Server validates all requests, recalculates amounts and commits PostgreSQL transactions. */
 export async function apiRequest<T>(path:string,body?:unknown):Promise<T>{
- const response=await fetch('/api'+path,{method:body===undefined?'GET':'POST',credentials:'include',headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+ let response:Response;
+ try{response=await fetch('/api'+path,{method:body===undefined?'GET':'POST',credentials:'include',headers:body===undefined?{}:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})})}
+ catch(error){if(error instanceof TypeError)throw new Error('The store connection was interrupted. Check the kiosk internet connection, then try again. Your entered details have been kept.');throw error}
  const payload=await response.json().catch(()=>({error:'Unexpected response from API'}));
  if(!response.ok)throw new Error(payload.error||`API returned ${response.status}`);return payload as T;
 }

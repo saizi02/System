@@ -20,6 +20,8 @@ export default function KioskApp(){
  const [shopState,setShopState]=useState<ShopState>('idle');
  const stateRef=useRef<ShopState>('idle');stateRef.current=shopState;
  const [full,setFull]=useState(!!document.fullscreenElement||window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+ const [networkOnline,setNetworkOnline]=useState(()=>navigator.onLine);
+ useEffect(()=>{const online=()=>setNetworkOnline(true),offline=()=>setNetworkOnline(false);window.addEventListener('online',online);window.addEventListener('offline',offline);return()=>{window.removeEventListener('online',online);window.removeEventListener('offline',offline)}},[]);
 
  // Make the installed app identify as "Tillora Kiosk" (own manifest, name, no scrolling/zoom gestures).
  useEffect(()=>{
@@ -65,7 +67,7 @@ export default function KioskApp(){
 
  if(phase==='setup')return <KioskSetup message={message} onPair={pair} fullButton={fullButton}/>;
  if(phase==='checking'||!device)return <main className="kiosk-screen"><Brand locked/><p>Connecting to the store system…</p></main>;
- if(phase==='unreachable')return <main className="kiosk-screen"><Brand locked/><PlugZap size={44}/><h1>Can't reach the store system</h1><p>Retrying automatically. Please check the network cable or Wi-Fi.</p></main>;
+ if(phase==='unreachable'||!networkOnline)return <main className="kiosk-screen kiosk-error-screen" role="alert"><Brand locked/><div className="kiosk-error-icon"><PlugZap size={44}/></div><span className="eyebrow">CONNECTION PROBLEM</span><h1>{networkOnline?'The store system is unavailable':'The kiosk has lost internet connection'}</h1><p>{networkOnline?'We are trying to reconnect automatically. If payment is not available, please wait before trying again.':'You can keep the kiosk screen open, but shopping and payments need internet access.'}</p><ol className="kiosk-recovery"><li>Check that the Wi-Fi is connected, or that the network cable is plugged in.</li><li>Wait 30 seconds and try the connection again.</li><li>If it still does not work, ask a staff member to restart the kiosk connection.</li></ol><button className="btn btn-primary" onClick={()=>{setNetworkOnline(navigator.onLine);void beat()}}>Retry connection</button></main>;
  if(phase==='maintenance')return <main className="kiosk-screen maintenance"><Brand locked/><Wrench size={46}/><h1>Kiosk temporarily out of service</h1><p>Please see a member of staff, or use another till.</p></main>;
  return <>{fullButton}<Shop key={device.token} mode="kiosk" scope={{businessId:device.businessId,branchId:device.branchId,deviceToken:device.token}} onState={setShopState}/></>;
 }
