@@ -17,5 +17,7 @@ services:
         value: shared
       - key: STORE_TIMEZONE
         value: Africa/Harare
+      - key: BOOTSTRAP_CHIZZYBOI_STORE
+        value: true
       - key: ALLOW_SIMULATED_PAYMENTS
         value: true
