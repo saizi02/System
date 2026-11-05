@@ -19,7 +19,8 @@ export default function Shop({mode='mobile',scope,onState}:{mode?:'mobile'|'kios
  const inventoryRows=(!online&&!stock.length)?cached?.stock||[]:stock;
  const stockFor=(p:string,v:string)=>inventoryRows.find(s=>s.id===sku(p,v))?.quantity||0;
  const lines=cart.map(x=>{const p=catalogue.find(p=>p.id===x.productId);return p?{...x,product:p}:null}).filter(Boolean) as (CartLine&{product:Product})[];
- const total=lines.reduce((s,x)=>s+x.product.priceCents*x.quantity,0);const rate=Number(business?.rates?.[currency]||1);const displayTotal=Math.round(total*rate);
+ const unitPrice=(p:Product,variantId:string)=>p.priceCents+(p.variants.find(v=>v.id===variantId)?.surchargeCents||0);
+ const total=lines.reduce((s,x)=>s+unitPrice(x.product,x.variantId)*x.quantity,0);const rate=Number(business?.rates?.[currency]||1);const displayTotal=Math.round(total*rate);
  const add=(p:Product,variantId?:string):boolean=>{const v=variantId||p.variants?.[0]?.id||'default';const inCart=cart.find(c=>c.productId===p.id&&c.variantId===v)?.quantity||0;if(inCart>=stockFor(p.id,v)){setError('Insufficient stock for this item');return false}setError('');setCart(a=>{const match=a.find(x=>x.productId===p.id&&x.variantId===v);return match?a.map(x=>x===match?{...x,quantity:x.quantity+1}:x):[...a,{productId:p.id,variantId:v,quantity:1}]});return true};
  const adjust=(l:CartLine,change:number)=>setCart(a=>a.map(x=>x.productId===l.productId&&x.variantId===l.variantId?{...x,quantity:Math.min(stockFor(l.productId,l.variantId),x.quantity+change)}:x).filter(x=>x.quantity>0));
  const checked=async(presentationOutcome:'approved'|'declined'='approved'):Promise<boolean>=>{

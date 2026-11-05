@@ -54,7 +54,7 @@ export async function action(name,input,req){
  }
  case 'upsertProduct':{
   const id=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],id);const name=required(input.name,'name'),category=required(input.category,'category');const price=integer(input.priceCents,'priceCents',0,100000000);
-  const variants=Array.isArray(input.variants)&&input.variants.length?input.variants.map((v,k)=>({id:required(v.id||`v${k+1}`,'variant id',40),name:required(v.name,'variant name',60),...(v.barcode?{barcode:String(v.barcode).replace(/[\u0000-\u001f]/g,'').trim().slice(0,80)}:{})})):[{id:'default',name:'Standard'}];
+  const variants=Array.isArray(input.variants)&&input.variants.length?input.variants.map((v,k)=>({id:required(v.id||`v${k+1}`,'variant id',40),name:required(v.name,'variant name',60),...(v.barcode?{barcode:String(v.barcode).replace(/[\u0000-\u001f]/g,'').trim().slice(0,80)}:{}),...(Number.isSafeInteger(v.surchargeCents)?{surchargeCents:Math.max(0,Math.min(v.surchargeCents,10000000))}:{})})):[{id:'default',name:'Standard'}];
   assert(variants.length<=25&&new Set(variants.map(v=>v.id)).size===variants.length,400,'Invalid product variants');const v=JSON.stringify(variants);
   const barcode=String(input.barcode||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,80);
   if(barcode){const dup=await one('SELECT name FROM products WHERE business_id=$1 AND barcode=$2 AND ($3::uuid IS NULL OR id<>$3::uuid) LIMIT 1',[id,barcode,input.productId||null]);assert(!dup,409,`Barcode ${barcode} already belongs to "${dup?.name}"`)}
@@ -199,7 +199,8 @@ export async function action(name,input,req){
    for(const i of sorted){
     const p=(await c.query('SELECT name,price_cents,variants,active FROM products WHERE id=$1 AND business_id=$2',[i.productId,businessId])).rows[0];assert(p?.active,409,'Product unavailable');const variant=p.variants.find(v=>v.id===i.variantId);assert(variant,400,'Invalid variant');
     const stock=(await c.query('SELECT quantity FROM inventory WHERE business_id=$1 AND branch_id=$2 AND product_id=$3 AND variant_id=$4 FOR UPDATE',[businessId,branchId,i.productId,i.variantId])).rows[0];assert(stock?.quantity>=i.quantity,409,`${p.name} is out of stock`);
-    lines.push({productId:i.productId,variantId:i.variantId,name:p.name,variantName:variant.name,quantity:i.quantity,unitCents:p.price_cents,lineCents:p.price_cents*i.quantity});
+    const unitCents=p.price_cents+(Number.isSafeInteger(variant.surchargeCents)?variant.surchargeCents:0);
+    lines.push({productId:i.productId,variantId:i.variantId,name:p.name,variantName:variant.name,quantity:i.quantity,unitCents,lineCents:unitCents*i.quantity});
    }
    const totalCents=lines.reduce((sum,l)=>sum+l.lineCents,0);assert(totalCents<=1e9,400,'Order too large');const totalMinor=Math.round(totalCents*rate);const pay=await authorizePayment({method:input.method,amountMinor:totalMinor,currency,orderRef:key,demoOutcome:input.demoOutcome});const extra=options(b.profile,input.method,input,pay.outcome);const status=extra.paymentOutcome==='pending'?'pending_cash':extra.paymentOutcome==='declined'?'failed':'paid';
    if(status==='paid')for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);

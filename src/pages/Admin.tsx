@@ -210,7 +210,10 @@ const slugOf=(t:string)=>t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+
 /** 13-digit in-store barcode (prefix 200 = store use) with a valid EAN-13 check digit. */
 function storeBarcode(){const d=[2,0,0,...Array.from(crypto.getRandomValues(new Uint8Array(9)),n=>n%10)];const sum=d.reduce((s,n,i)=>s+n*(i%2?3:1),0);return d.join('')+((10-sum%10)%10)}
 /** Keeps the id of any variant whose name already exists, so stock history is never orphaned when a product is edited. */
-function buildVariants(names:string[],prior?:{id:string;name:string;barcode?:string}[]){const unique=[...new Set(names)];const used=new Set<string>();return unique.map(n=>{const old=prior?.find(v=>v.name===n);let id=old?.id;if(!id){const base=slugOf(n);id=base;let k=2;while(used.has(id)||prior?.some(v=>v.id===id))id=`${base}-${k++}`}used.add(id);return{id,name:n,barcode:old?.barcode||storeBarcode()}})}
+function buildVariants(names:string[],prior?:{id:string;name:string;barcode?:string;surchargeCents?:number}[]){const unique=[...new Set(names)];const used=new Set<string>();return unique.map(n=>{const old=prior?.find(v=>v.name===n);let id=old?.id;if(!id){const base=slugOf(n);id=base;let k=2;while(used.has(id)||prior?.some(v=>v.id===id))id=`${base}-${k++}`}used.add(id);return{id,name:n,barcode:old?.barcode,surchargeCents:old?.surchargeCents||0}})}
+function foodVariants(value:string,prior?:{id:string;name:string;surchargeCents?:number}[]){
+ return listOf(value).map(entry=>{const match=entry.match(/^(.*?)(?:\s*\+\s*\$?\s*(\d+(?:\.\d{1,2})?))$/);const name=(match?match[1]:entry).trim();const surcharge=Math.round(Number(match?.[2]||0)*100);const old=prior?.find(v=>v.name===name);return{id:old?.id||slugOf(name)+'-modifier',name,surchargeCents:surcharge||old?.surchargeCents||0}});
+}
 function ProductManager({storeId,profile,branchId,branchName,products,busy,run}:{storeId:string;profile:Profile;branchId:string;branchName:string;products:Product[];busy:boolean;run:Run}){
  const copy=productCopy[profile];
  const [editing,setEditing]=useState(''),[name,setName]=useState(''),[category,setCategory]=useState(''),[price,setPrice]=useState(''),[barcode,setBarcode]=useState(''),[description,setDescription]=useState(''),[image,setImage]=useState(''),[options,setOptions]=useState(''),[sizes,setSizes]=useState<string[]>([]),[otherSizes,setOtherSizes]=useState(''),[colours,setColours]=useState(''),[openingStock,setOpeningStock]=useState(''),[uploading,setUploading]=useState(false),[formError,setFormError]=useState(''),[labels,setLabels]=useState<Product[]|null>(null),[findCode,setFindCode]=useState(''),[findMsg,setFindMsg]=useState('');
@@ -227,9 +230,9 @@ function ProductManager({storeId,profile,branchId,branchName,products,busy,run}:
   const prior=products.find(x=>x.id===editing);const cents=Math.round(Number(price)*100);
   if(!(cents>0)){setFormError('Enter a price greater than zero');return}
   let names:string[]=[];
-  if(profile==='food')names=listOf(options);
+  if(profile==='food'){const variants=foodVariants(options,prior?.variants);names=variants.map(v=>v.name)}
   if(profile==='clothing'){const sz=[...presetSizes.filter(s=>sizes.includes(s)),...listOf(otherSizes)],cl=listOf(colours);if(!sz.length&&!cl.length){setFormError('Choose at least one size (or enter colours)');return}names=sz.length&&cl.length?sz.flatMap(s=>cl.map(c=>`${s} / ${c}`)):sz.length?sz:cl}
-  const variants=profile==='grocery'?(prior?.variants||[{id:'default',name:'Standard'}]):names.length?buildVariants(names,prior?.variants):(prior?.variants.filter(v=>v.name==='Standard').length?prior.variants:[{id:'default',name:'Standard'}]);
+  const variants=profile==='grocery'?(prior?.variants||[{id:'default',name:'Standard'}]):profile==='food'?foodVariants(options,prior?.variants):names.length?buildVariants(names,prior?.variants):(prior?.variants.filter(v=>v.name==='Standard').length?prior.variants:[{id:'default',name:'Standard'}]);
   const r=await run('upsertProduct',{businessId:storeId,...(editing?{productId:editing}:{}),name,category,priceCents:cents,barcode:profile==='grocery'?barcode.trim():'',description,image,variants},editing?'Product updated':'Product saved');
   if(!r)return;
   const qty=Math.floor(Number(openingStock));
