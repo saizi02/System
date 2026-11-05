@@ -54,7 +54,7 @@ export async function action(name,input,req){
  }
  case 'upsertProduct':{
   const id=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],id);const name=required(input.name,'name'),category=required(input.category,'category');const price=integer(input.priceCents,'priceCents',0,100000000);
-  const variants=Array.isArray(input.variants)&&input.variants.length?input.variants.map((v,k)=>({id:required(v.id||`v${k+1}`,'variant id',40),name:required(v.name,'variant name',60)})):[{id:'default',name:'Standard'}];
+  const variants=Array.isArray(input.variants)&&input.variants.length?input.variants.map((v,k)=>({id:required(v.id||`v${k+1}`,'variant id',40),name:required(v.name,'variant name',60),...(v.barcode?{barcode:String(v.barcode).replace(/[\u0000-\u001f]/g,'').trim().slice(0,80)}:{})})):[{id:'default',name:'Standard'}];
   assert(variants.length<=25&&new Set(variants.map(v=>v.id)).size===variants.length,400,'Invalid product variants');const v=JSON.stringify(variants);
   const barcode=String(input.barcode||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,80);
   if(barcode){const dup=await one('SELECT name FROM products WHERE business_id=$1 AND barcode=$2 AND ($3::uuid IS NULL OR id<>$3::uuid) LIMIT 1',[id,barcode,input.productId||null]);assert(!dup,409,`Barcode ${barcode} already belongs to "${dup?.name}"`)}
