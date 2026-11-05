@@ -7,7 +7,6 @@ export async function getData(path,viewer,query={}){
  const p=path.split('/').filter(Boolean);assert(p.length<=5,400,'Invalid resource path');let rows;
  if(p.length===1&&p[0]==='businesses'){
   if(viewer?.role==='super_admin')rows=(await sql(`SELECT ${cols.businesses} FROM businesses ORDER BY created_at DESC`)).rows;
-  else if(viewer?.business_id){rows=(await sql(`SELECT ${cols.businesses} FROM businesses WHERE id=$1`,[viewer.business_id])).rows;}
   else rows=(await sql(`SELECT ${cols.businesses} FROM businesses WHERE status='active' ORDER BY name`)).rows;
  }
  else if(p.length===2&&p[0]==='businesses'){
