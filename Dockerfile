@@ -20,4 +20,4 @@ USER node
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s CMD wget -qO- http://127.0.0.1:3001/api/health || exit 1
 # Apply any new database migrations, then start. Safe to repeat on every start.
-CMD ["sh","-c","node scripts/migrate.js && if [ -n \"$BOOTSTRAP_ADMIN_EMAIL\" ] && [ -n \"$BOOTSTRAP_ADMIN_PASSWORD\" ]; then node scripts/bootstrap-admin.js || exit $?; fi; node src/index.js"]
+CMD ["sh","-c","node scripts/migrate.js && if [ -n \"$BOOTSTRAP_ADMIN_EMAIL\" ] && [ -n \"$BOOTSTRAP_ADMIN_PASSWORD\" ]; then node scripts/bootstrap-admin.js || exit $?; fi; if [ \"$BOOTSTRAP_CHIZZYBOI_STORE\" = \"true\" ]; then node scripts/bootstrap-store.js || exit $?; fi; node src/index.js"]
