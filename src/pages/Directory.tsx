@@ -102,6 +102,6 @@ export default function Directory(){
       </section>
       <section className="landing-footer-cta"><div><h2>Shopping without the queue.</h2><p>Install Tillora as an app, or use it directly in your browser.</p></div>{canInstall?<button className="landing-primary" onClick={()=>void install()}><Download size={18}/> Install Tillora</button>:<span><Monitor size={19}/> Web • Mobile • Kiosk</span>}</section>
     </main>
-    <footer className="landing-footer"><span>© {new Date().getFullYear()} Tillora Retail · Smart Self-Service Checkout</span><span><WifiOff size={15}/> Offline browsing supported; checkout requires a connection</span><span>Presentation payments move no real funds.</span></footer>
+    <footer className="landing-footer"><span>© {new Date().getFullYear()} Tillora Retail · Smart Self-Service Checkout</span><span><WifiOff size={15}/> Secure shopping, even when connectivity changes</span><span>Connected retail for stores, kiosks and customers.</span></footer>
   </div>;
 }

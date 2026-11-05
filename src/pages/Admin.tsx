@@ -77,7 +77,7 @@ export default function Admin(){
  const {items:sessions,error:sessionError}=useLive<{id:string;count:number;status:string;updatedAt:any}>(sessionsRef,[storeId]);
  const flagsRef=useMemo(()=>storeId?listResource('businesses',storeId,'flags'):null,[storeId]);
  const {items:flags,error:flagError}=useLive<{id:string;type:string;orderId:string;createdAt:any}>(flagsRef,[storeId]);
- const run:Run=async(name,data,success='Saved to PostgreSQL')=>{setWorking(true);setError('');setMessage('');try{const result=await call<Record<string,any>>(name,data);setMessage(success);return result}catch(ex){setError((ex as Error).message);return null}finally{setWorking(false)}};
+ const run:Run=async(name,data,success='Changes saved successfully')=>{setWorking(true);setError('');setMessage('');try{const result=await call<Record<string,any>>(name,data);setMessage(success);return result}catch(ex){setError((ex as Error).message);return null}finally{setWorking(false)}};
  const select=(s:Section)=>{setSection(s);setMobileNav(false);setError('');setMessage('')};
  const failed=[storeError,ownError,branchError,productError,invError,supplierError,purchaseOrderError,orderError,staffError,auditError,sessionError,flagError,error].find(Boolean);
  const revenue=orders.filter(o=>o.status==='paid').reduce((a,o)=>a+o.totalCents,0);

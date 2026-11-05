@@ -74,7 +74,7 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
   return <div className="payment-sim-overlay" role="presentation">
     <section className="payment-sim-sheet" role="dialog" aria-modal="true" aria-labelledby="demo-payment-heading">
       <div className="payment-sim-top">
-        <span className="payment-sim-tag"><ShieldCheck size={15}/> PRESENTATION MODE · NO FUNDS MOVED</span>
+        <span className="payment-sim-tag"><ShieldCheck size={15}/> SECURE DEMONSTRATION · NO FUNDS MOVED</span>
         <button className="payment-sim-close" type="button" onClick={onClose} disabled={locked} aria-label="Close presentation payment">×</button>
       </div>
       <div className="payment-sim-layout">

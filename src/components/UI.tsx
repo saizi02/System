@@ -8,9 +8,9 @@ export function Stat({label,value,detail}:{label:string;value:string|number;deta
 export function Action({children,onClick,secondary=false,disabled=false}:{children:React.ReactNode;onClick?:()=>void;secondary?:boolean;disabled?:boolean}){return <button type="button" className={'btn '+(secondary?'btn-outline':'btn-primary')} onClick={onClick} disabled={disabled}>{children}<ArrowRight size={16}/></button>}
 
 export function RoleBadge({role}:{role:Role}){return <span className={'role-badge role-'+role}>{roleLabel[role]}</span>}
-/** Green "Live" dot while data is syncing from the shared PostgreSQL database; red when the API cannot be reached. */
+/** Operational live-status indicator. */
 export function LiveBadge({synced,error}:{synced:number|null;error?:string}){
  const [,tick]=useState(0);useEffect(()=>{const t=setInterval(()=>tick(n=>n+1),1000);return()=>clearInterval(t)},[]);
  const age=synced?Math.max(0,Math.round((Date.now()-synced)/1000)):null;const offline=!!error||age===null||age>10;
- return <span className={'live-badge '+(offline?'offline':'online')} title={error||'Synced with the shared PostgreSQL database every 3 seconds'}><i/>{offline?(age===null&&!error?'Connecting…':'Reconnecting…'):`Live · ${age}s`}</span>;
+ return <span className={'live-badge '+(offline?'offline':'online')} title={error||'Live operational data'}><i/>{offline?(age===null&&!error?'Connecting…':'Reconnecting…'):`Live · ${age}s`}</span>;
 }

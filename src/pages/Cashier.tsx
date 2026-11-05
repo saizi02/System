@@ -290,7 +290,7 @@ export default function Cashier() {
           <PageTitle
             eyebrow="STORE CHECKOUT OPERATIONS"
             title={sectionNames[view]}
-            description="Confirm cash, assist shoppers and hand over orders. Connected live to the Kitchen display and Admin console; payments are simulated."
+            description="Confirm cash payments, assist shoppers and hand over completed orders."
           />
           {(error || orderErr || allErr || ownErr) && (
             <p className="error" role="alert">
