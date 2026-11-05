@@ -17,3 +17,5 @@ services:
         value: shared
       - key: STORE_TIMEZONE
         value: Africa/Harare
+      - key: ALLOW_SIMULATED_PAYMENTS
+        value: true

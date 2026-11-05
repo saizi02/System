@@ -52,6 +52,7 @@ The repository includes `render.yaml` as a Render Blueprint and uses the Neon Po
 3. In the service Environment settings, enter the Neon pooled connection string as `DATABASE_URL` and the direct connection string as `DATABASE_URL_UNPOOLED`.
 4. Optionally set `APP_ORIGIN` to the exact public HTTPS URL, for example `https://sstwas.onrender.com`. Render provides `RENDER_EXTERNAL_URL` automatically, so this is only needed for a custom domain.
 5. Render generates `SESSION_SECRET` automatically. For a single-store deployment, set `STORE_MODE=single` and `STORE_ID` to the store UUID.
+6. EcoCash, bank-transfer, and card demonstrations are enabled through `ALLOW_SIMULATED_PAYMENTS=true`. They do not move real money. Connect an approved gateway before offering live mobile or bank payments.
 
 ## 5. Hardware
 - **Kiosk:** tablet or touchscreen PC, set to never sleep, running the installed kiosk app (pair it in Admin, Kiosks). Connect the **barcode scanner** by USB or Bluetooth (see `BARCODE-SCANNER.md`). Grocery kiosks have no camera scanning; the scanner and an on-screen keypad are used.
