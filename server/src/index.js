@@ -11,6 +11,7 @@ import {HttpError,assert,tokenHash,publicStaff,PORTALS} from './helpers.js';
 import {getData} from './read.js';
 import {action,audit} from './actions.js';
 import {config,publicOrigin,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv} from './reports.js';
+import {uploadProductPhoto} from './storage.js';
 const app=express();const production=process.env.NODE_ENV==='production';const PORT=Number(process.env.PORT||3001);
 validateConfig();
 if(production)app.set('trust proxy',1);
@@ -83,7 +84,10 @@ const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:5*1024*1024
 app.post('/api/uploads/:businessId',upload.single('image'),async(req,res,next)=>{try{
  assert(req.staff&&['super_admin','business_admin'].includes(req.staff.role),403,'Admin required');if(req.staff.role!=='super_admin')assert(req.staff.business_id===req.params.businessId,403,'Different business');
  assert(req.file,400,'Image missing');const ext={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','image/gif':'.gif'}[req.file.mimetype];
- assert(/^[a-f0-9-]{36}$/i.test(req.params.businessId),400,'Invalid business ID');const directory=resolve('uploads',req.params.businessId);await mkdir(directory,{recursive:true});const filename=randomUUID()+ext;await writeFile(join(directory,filename),req.file.buffer,{flag:'wx'});res.json({url:`/api/images/${req.params.businessId}/${filename}`});
+ assert(/^[a-f0-9-]{36}$/i.test(req.params.businessId),400,'Invalid business ID');
+ const cloudinaryUrl=await uploadProductPhoto(req.params.businessId,req.file);
+ if(cloudinaryUrl)return res.json({url:cloudinaryUrl});
+ const directory=resolve('uploads',req.params.businessId);await mkdir(directory,{recursive:true});const filename=randomUUID()+ext;await writeFile(join(directory,filename),req.file.buffer,{flag:'wx'});res.json({url:`/api/images/${req.params.businessId}/${filename}`,warning:'Cloud photo storage is not configured; this image may disappear after a server restart'});
  }catch(e){next(e)}});
 app.use('/api/images',express.static(resolve('uploads'),{dotfiles:'deny',immutable:true,maxAge:'30d',fallthrough:false}));
 app.use('/api',(req,res)=>res.status(404).json({error:'API endpoint not found'}));
