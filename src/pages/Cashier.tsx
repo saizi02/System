@@ -73,6 +73,7 @@ export default function Cashier() {
   const [cashReview, setCashReview] = useState<Order | null>(null),
     [cashFind, setCashFind] = useState(""),
     [cashScan, setCashScan] = useState(false),
+    [cashTendered, setCashTendered] = useState(""),
     [account, setAccount] = useState(false),
     [notice, setNotice] = useState("");
   const chime = useChime("sstwas-cashier-chime");
@@ -142,6 +143,12 @@ export default function Cashier() {
         (o) => o.payNumber?.replace(/\D/g, "") === needle,
       )
     : pendingAll;
+  const tenderedMinor = Math.round((Number(cashTendered) || 0) * 100);
+  const cashChange = cashReview
+    ? Math.max(0, tenderedMinor - cashReview.totalMinor)
+    : 0;
+  const cashTenderedEnough =
+    !!cashReview && tenderedMinor >= cashReview.totalMinor;
   const paid = orders.filter((o) => o.status === "paid");
   const queue = paid.filter((o) => o.fulfillment !== "collected");
   const isFood = store?.profile === "food";
@@ -509,7 +516,12 @@ export default function Cashier() {
                               <div className="table-actions">
                                 <button
                                   disabled={busy}
-                                  onClick={() => setCashReview(o)}
+                                  onClick={() => {
+                                    setCashTendered(
+                                      (o.totalMinor / 100).toFixed(2),
+                                    );
+                                    setCashReview(o);
+                                  }}
                                 >
                                   Confirm cash
                                 </button>
@@ -893,8 +905,8 @@ export default function Cashier() {
             </span>
             <h2 id="cash-confirm-title">Confirm cash checkout</h2>
             <p>
-              Check the items, take the exact amount from the customer, then
-              confirm.{isSim ? " No actual money is transferred." : ""}
+              Check the items and total, enter the amount received, then confirm.
+              {isSim ? " No actual money is transferred." : ""}
             </p>
             <div className="cash-confirm-receipt">
               <span>TRANSACTION</span>
@@ -911,6 +923,23 @@ export default function Cashier() {
               <span>TOTAL TO CONFIRM</span>
               <b>{money(cashReview.totalMinor, cashReview.currency)}</b>
             </div>
+            <label className="cash-tendered-field">
+              <span>Amount received ({cashReview.currency})</span>
+              <input
+                type="number"
+                min={(cashReview.totalMinor / 100).toFixed(2)}
+                step="0.01"
+                inputMode="decimal"
+                value={cashTendered}
+                onChange={(e) => setCashTendered(e.target.value)}
+              />
+            </label>
+            <div className={`cash-change ${cashTenderedEnough ? "ready" : ""}`}>
+              <span>Change to return</span>
+              <strong>
+                {money(cashChange, cashReview.currency)}
+              </strong>
+            </div>
             <div className="cash-confirm-actions">
               <button
                 type="button"
@@ -923,12 +952,16 @@ export default function Cashier() {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || !cashTenderedEnough}
                 onClick={() =>
                   void (async () => {
                     const completed = await run(
                       "confirmCash",
-                      { orderId: cashReview.id },
+                      {
+                        orderId: cashReview.id,
+                        tenderedMinor,
+                        changeMinor: cashChange,
+                      },
                       "Cash payment confirmed; stock updated",
                     );
                     if (completed) setCashReview(null);

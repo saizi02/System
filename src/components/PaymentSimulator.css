@@ -47,11 +47,13 @@
 @media(max-width:720px){.payment-sim-overlay{padding:8px;align-items:flex-start}.payment-sim-sheet{border-radius:16px}.payment-sim-layout{grid-template-columns:1fr}.payment-sim-left{padding:21px 23px;border-right:0;border-bottom:1px solid #dbe6f0}.payment-sim-method-icon{height:43px;width:43px;margin-bottom:16px}.payment-sim-subheading{font-size:12px}.payment-sim-amount{margin:14px 0 9px;padding:14px}.payment-sim-amount strong{font-size:28px}.payment-sim-demo-field,.payment-sim-demo-card{padding:13px}.payment-sim-right{padding:18px 23px;min-height:350px}.payment-sim-terminal-content{padding-top:15px}.payment-sim-terminal-content h3{font-size:19px}.payment-sim-indicator{margin:17px 0}}
 @media(prefers-reduced-motion:reduce){.payment-sim-spinner{animation:none}}
 .cash-confirm-overlay{position:fixed;inset:0;background:#07162bd9;z-index:350;display:grid;place-items:center;padding:16px;backdrop-filter:blur(10px)}
-.cash-confirm-sheet{background:white;color:#173250;padding:34px;border-radius:21px;width:min(540px,100%);box-shadow:0 30px 100px #01081788}
+.cash-confirm-sheet{background:white;color:#173250;padding:34px;border-radius:21px;width:min(540px,100%);max-height:calc(100vh - 32px);overflow-y:auto;box-shadow:0 30px 100px #01081788}
 .cash-confirm-sheet h2{font-size:28px;margin:22px 0 10px}.cash-confirm-sheet>p{font-size:13px;color:#72839c;line-height:1.7}
 .cash-confirm-receipt{background:#f5f8fc;border:1px solid #e1eaf3;border-radius:12px;padding:20px;display:grid;gap:9px;margin:20px 0;overflow-wrap:anywhere}
 .cash-confirm-receipt>span{font-size:10px;color:#8190a4;font-weight:900;letter-spacing:.08em;margin-top:6px}
 .cash-confirm-receipt>strong{font-size:12px}.cash-confirm-receipt>div{font-size:12px;border-bottom:1px solid #e5edf4;padding-bottom:9px}
 .cash-confirm-receipt small{color:#8a99ac}.cash-confirm-receipt b{font-size:26px;color:#225fba}
-.cash-confirm-actions{display:flex;gap:10px}.cash-confirm-actions>*{flex:1}.cash-confirm-sheet>small{display:block;margin-top:15px;font-size:11px;color:#7d8b9e}
+.cash-tendered-field{display:grid;gap:8px;margin-top:18px;color:#52677f;font-size:11px;font-weight:900}.cash-tendered-field input{box-sizing:border-box;width:100%;border:1px solid #cad7e6;border-radius:11px;padding:15px;font-size:22px;font-weight:800;color:#173250}.cash-tendered-field input:focus{border-color:#347fdb;outline:none;box-shadow:0 0 0 3px #347fdb18}
+.cash-change{margin:12px 0 18px;padding:16px;display:flex;justify-content:space-between;align-items:center;border-radius:12px;background:#fff1f0;color:#a32c2b}.cash-change.ready{background:#edf8f3;color:#197148}.cash-change span{font-size:12px;font-weight:800}.cash-change strong{font-size:20px}
+.cash-confirm-actions{display:flex;gap:10px;position:sticky;bottom:-34px;background:white;padding:14px 0 0}.cash-confirm-actions>*{flex:1}.cash-confirm-sheet>small{display:block;margin-top:15px;font-size:11px;color:#7d8b9e}
 @media(max-width:540px){.cash-confirm-sheet{padding:24px 20px}.cash-confirm-actions{flex-direction:column}}

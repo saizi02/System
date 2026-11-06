@@ -227,11 +227,17 @@ export async function action(name,input,req){
  case 'confirmCash':case 'cancelCash':{
   const{businessId,branchId}=scope(input);authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);const orderId=required(input.orderId,'order ID');return transaction(async c=>{
    const order=(await c.query('SELECT * FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 FOR UPDATE',[orderId,businessId,branchId])).rows[0];assert(order?.status==='pending_cash'&&order.method==='cash',409,'Not a pending cash order');
+   const tenderedMinor=name==='confirmCash'&&Number.isSafeInteger(input.tenderedMinor)?input.tenderedMinor:null;
+   const changeMinor=name==='confirmCash'&&Number.isSafeInteger(input.changeMinor)?input.changeMinor:null;
+   if(name==='confirmCash'){
+    assert(tenderedMinor!==null&&tenderedMinor>=order.total_minor,400,'Amount received is less than the order total');
+    assert(changeMinor!==null&&changeMinor===tenderedMinor-order.total_minor,400,'Invalid change amount');
+   }
    if(name==='confirmCash'){
     const sorted=[...order.items].sort((a,b)=>(a.productId+a.variantId).localeCompare(b.productId+b.variantId));for(const i of sorted){const r=(await c.query('SELECT quantity FROM inventory WHERE business_id=$1 AND branch_id=$2 AND product_id=$3 AND variant_id=$4 FOR UPDATE',[businessId,branchId,i.productId,i.variantId])).rows[0];assert(r?.quantity>=i.quantity,409,`${i.name} out of stock`)}
     for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);
    }
-   await c.query('UPDATE orders SET status=$1,handled_by=$2,updated_at=now() WHERE id=$3',[name==='confirmCash'?'paid':'cancelled',actor.id,orderId]);await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[businessId,actor.id,name==='confirmCash'?'order.cash_confirmed':'order.cash_cancelled',JSON.stringify({orderId})]);return{ok:true};
+    await c.query('UPDATE orders SET status=$1,handled_by=$2,updated_at=now() WHERE id=$3',[name==='confirmCash'?'paid':'cancelled',actor.id,orderId]);await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[businessId,actor.id,name==='confirmCash'?'order.cash_confirmed':'order.cash_cancelled',JSON.stringify({orderId,tenderedMinor,changeMinor})]);return{ok:true};
   });
  }
   case 'refundOrder':case 'voidOrder':{
