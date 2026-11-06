@@ -3,7 +3,7 @@ import {randomBytes,createHash} from 'node:crypto';
 import {sql,transaction} from './db.js';
 import {config} from './config.js';import {authorizePayment} from './payments.js';
 import {HttpError,authorize,assert,required,integer,cartItems,options,tokenHash,ROLES,canManage,strongPassword,canAdvance,NEXT_FULFILLMENT} from './helpers.js';
-const profiles=['grocery','food','clothing'];const currencies=['USD','ZIG','ZAR'];
+const profiles=['grocery','food','clothing'];const currencies=['USD','ZIG'];
 const one=async(q,p=[])=>(await sql(q,p)).rows[0];
 export const audit=async(b,id,action,details={})=>{await sql('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[b||null,id||null,action,JSON.stringify(details)])};
 const CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -23,7 +23,7 @@ const pairBlocked=ip=>{const a=pairAttempts.get(ip);const now=Date.now();if(!a||
 const pairFailed=ip=>{const a=pairAttempts.get(ip);const now=Date.now();if(!a||now-a.first>15*60000)pairAttempts.set(ip,{first:now,count:1});else a.count++};
 async function kioskForAdmin(actor,kioskId){const k=await one('SELECT * FROM kiosk_devices WHERE id=$1',[required(kioskId,'kiosk')]);assert(k,404,'Kiosk not found');authorize(actor,['super_admin','business_admin'],k.business_id);return k}
 function scope(input){return{businessId:required(input.businessId,'businessId'),branchId:required(input.branchId,'branchId')}}
-function validateRates(rates){assert(rates&&typeof rates==='object',400,'Invalid rates');const result={USD:1};for(const c of ['ZIG','ZAR']){const n=Number(rates[c]);assert(Number.isFinite(n)&&n>0&&n<=1e6,400,'Invalid exchange rate');result[c]=n}return result}
+function validateRates(rates){assert(rates&&typeof rates==='object',400,'Invalid rates');const result={USD:1};for(const c of ['ZIG']){const n=Number(rates[c]);assert(Number.isFinite(n)&&n>0&&n<=1e6,400,'Invalid exchange rate');result[c]=n}return result}
 export async function action(name,input,req){
  const actor=req.staff,guestId=req.guestId;
  switch(name){

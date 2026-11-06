@@ -12,7 +12,7 @@ A self-service checkout web app for grocery, fast-food and fashion outlets. It c
 - Checkout: server-side prices, inventory transactions, one-time order keys, stock deduction only when payment has demo approval / cashier cash confirmation.
 - Payments: **academic simulations only** (EcoCash-style / virtual card approval or decline; cash is confirmed by Cashier). They look realistic but **do not transfer money** or ask for real card credentials.
 - Receipts: digital receipt plus browser printing with thermal 80 mm print CSS.
-- Currency: USD, ZiG and ZAR using per-store rate snapshots.
+- Currency: USD and ZiG using per-store rate snapshots.
 
 **No weighing-device workflow**. Grocery products are sold as whole units by barcode or catalogue selection.
 

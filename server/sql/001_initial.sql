@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS businesses (
   profile text NOT NULL CHECK(profile IN ('grocery','food','clothing')),
   status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','suspended')),
   domain text NOT NULL DEFAULT '', currency text NOT NULL DEFAULT 'USD',
-  rates jsonb NOT NULL DEFAULT '{"USD":1,"ZIG":1,"ZAR":1}'::jsonb,
+  rates jsonb NOT NULL DEFAULT '{"USD":1,"ZIG":1}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS branches (
