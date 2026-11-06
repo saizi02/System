@@ -17,12 +17,23 @@ export default function ExitVerifier(){
  const branchesRef=useMemo(()=>me.businessId?listResource('businesses',me.businessId,'branches'):null,[me.businessId]);
  const {items:branches}=useLive<Branch>(branchesRef,[me.businessId]);
  const branchId=me.branchId||branches[0]?.id||'';
+ const normalizeReceiptId=(value:string)=>{
+  const trimmed=value.trim();
+  try{
+   const parsed=new URL(trimmed);
+   const match=parsed.pathname.match(/\/receipt\/[^/]+\/([^/?#]+)/);
+   if(match)return decodeURIComponent(match[1]);
+  }catch{}
+  const match=trimmed.match(/\/receipt\/[^/]+\/([^/?#]+)/i);
+  return decodeURIComponent(match?.[1]||trimmed);
+ };
 
  const verify=async()=>{
-  if(!me.businessId||!branchId||!receiptId.trim())return;
+  const orderId=normalizeReceiptId(receiptId);
+  if(!me.businessId||!branchId||!orderId)return;
   setBusy(true);setError('');setSuccess('');
   try{
-   await call('verifyExit',{businessId:me.businessId,branchId,orderId:receiptId.trim()});
+   await call('verifyExit',{businessId:me.businessId,branchId,orderId});
    setSuccess('Receipt verified — customer may exit.');
    setReceiptId('');
   }catch(e){setError((e as Error).message)}
@@ -41,7 +52,7 @@ export default function ExitVerifier(){
     <p>Scan the receipt QR or enter the transaction ID.</p>
     <label className="field">Receipt transaction ID<input value={receiptId} onChange={e=>setReceiptId(e.target.value.trim())} placeholder="Paste or scan order ID" autoFocus/></label>
     <div className="form-actions"><button type="button" className="btn btn-outline" onClick={()=>setCamera(v=>!v)}>{camera?'Close camera':'Use camera'}</button><button type="button" className="btn btn-primary" disabled={busy||!receiptId.trim()} onClick={()=>void verify()}>{busy?'Verifying…':'Verify purchase'}</button></div>
-    {camera&&<Scanner caption="Scan the receipt QR" onScan={value=>{setReceiptId(value);setCamera(false)}}/>}
+    {camera&&<Scanner caption="Scan the receipt QR" onScan={value=>{setReceiptId(normalizeReceiptId(value));setCamera(false)}}/>}
     {error&&<p className="error" role="alert">{error}</p>}
     {success&&<p className="success-toast" role="status">{success}</p>}
    </section>
