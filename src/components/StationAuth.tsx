@@ -7,7 +7,7 @@ import {homeFor,portalName,portalRoles,roleLabel,type Portal} from '../lib/types
 import {Brand} from './UI';
 const meta:Record<Portal,{icon:ReactNode;tag:string;blurb:string;accent:string}>={
  admin:{icon:<ShieldCheck size={64}/>,tag:'ADMINISTRATION',blurb:'Stores, products, inventory, staff accounts and business reports.',accent:'admin'},
- cashier:{icon:<Wallet size={64}/>,tag:'CASHIER STATION',blurb:'Confirm cash, assist shoppers, hand over orders and verify grocery exits.',accent:'cashier'},
+ cashier:{icon:<Wallet size={64}/>,tag:'CASHIER STATION',blurb:'Confirm cash, assist shoppers and hand over orders.',accent:'cashier'},
  kitchen:{icon:<ChefHat size={64}/>,tag:'KITCHEN DISPLAY',blurb:'Live food orders from the tills. Prepare, mark ready, and the cashier is told.',accent:'kitchen'},
  exit:{icon:<ScanLine size={64}/>,tag:'EXIT VERIFICATION',blurb:'Verify paid grocery receipts and prevent duplicate exit checks.',accent:'exit'},
 };
