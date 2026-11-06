@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { detailResource } from "../lib/resources";
 import { useConfig } from "../lib/config";
 import { QRCodeSVG } from "qrcode.react";
-import { Printer, CheckCircle2, Clock3 } from "lucide-react";
+import { Printer, CheckCircle2, Clock3, ArrowLeft } from "lucide-react";
 import { call, apiRequest } from "../lib/api";
 import { useDoc } from "../lib/live";
 import { money, timestamp, type Order, type Business } from "../lib/types";
@@ -263,6 +263,18 @@ export default function Receipt() {
                 onClick={() => void print()}
               >
                 <Printer size={18} /> Print physical receipt
+              </button>
+            )}
+            {order.status === "paid" && order.source !== "kiosk" && (
+              <button
+                className="btn btn-outline receipt-print"
+                onClick={() =>
+                  nav(`/shop/${businessId}/${order.branchId}`, {
+                    replace: true,
+                  })
+                }
+              >
+                <ArrowLeft size={18} /> Back to shop
               </button>
             )}
             {order.source === "kiosk" && (
