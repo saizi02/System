@@ -193,7 +193,7 @@ export async function action(name,input,req){
   return{paired:true,enabled:k.enabled,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id,profile:k.profile}};
  }
  case 'checkout':{
-  const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','card','bank'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['super_admin','business_admin','cashier'],businessId,branchId);
+  const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','card','bank'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['cashier'],businessId,branchId);
   const currency=input.currency||'USD';assert(currencies.includes(currency),400,'Invalid currency');const key=required(input.idempotencyKey,'checkout key',100);assert(/^[a-zA-Z0-9-]{10,100}$/.test(key),400,'Invalid idempotency key');
   // Lock the customer's session row: ensures identical keys never create multiple orders on concurrent retries.
   return transaction(async c=>{
@@ -225,7 +225,7 @@ export async function action(name,input,req){
   });
  }
  case 'confirmCash':case 'cancelCash':{
-  const{businessId,branchId}=scope(input);authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);const orderId=required(input.orderId,'order ID');return transaction(async c=>{
+  const{businessId,branchId}=scope(input);authorize(actor,['cashier'],businessId,branchId);const orderId=required(input.orderId,'order ID');return transaction(async c=>{
    const order=(await c.query('SELECT * FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 FOR UPDATE',[orderId,businessId,branchId])).rows[0];assert(order?.status==='pending_cash'&&order.method==='cash',409,'Not a pending cash order');
    const tenderedMinor=name==='confirmCash'&&Number.isSafeInteger(input.tenderedMinor)?input.tenderedMinor:null;
    const changeMinor=name==='confirmCash'&&Number.isSafeInteger(input.changeMinor)?input.changeMinor:null;
@@ -241,7 +241,7 @@ export async function action(name,input,req){
   });
  }
   case 'refundOrder':case 'voidOrder':{
-   const{businessId,branchId}=scope(input);authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);
+   const{businessId,branchId}=scope(input);authorize(actor,['cashier'],businessId,branchId);
    const orderId=required(input.orderId,'order ID');const reason=required(input.reason,'reason',500);
    const reversal=name==='refundOrder'?'refunded':'voided';
    return transaction(async c=>{
@@ -258,7 +258,7 @@ export async function action(name,input,req){
   }
   case 'updateFulfillment':{
   // Kitchen display and Cashier station share this one endpoint; the role rules live in helpers.canAdvance().
-  const{businessId,branchId}=scope(input);authorize(actor,['cashier','kitchen','business_admin','super_admin'],businessId,branchId);
+  const{businessId,branchId}=scope(input);authorize(actor,['cashier','kitchen'],businessId,branchId);
   const b=await one('SELECT profile FROM businesses WHERE id=$1',[businessId]);assert(b&&b.profile!=='grocery',409,'Only food and fashion use fulfillment');
   const orderId=required(input.orderId,'order ID');const order=await one("SELECT fulfillment FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 AND status='paid'",[orderId,businessId,branchId]);assert(order,404,'Paid order not found');
   const target=input.fulfillment;assert(NEXT_FULFILLMENT[order.fulfillment]===target,409,'Invalid order status transition');
@@ -267,7 +267,7 @@ export async function action(name,input,req){
   await audit(businessId,actor.id,'order.fulfillment',{orderId,from:order.fulfillment,to:target,station:actor.role});return{ok:true};
  }
  case 'verifyExit':{
-  const{businessId,branchId}=scope(input);authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);const b=await one('SELECT profile FROM businesses WHERE id=$1',[businessId]);assert(b?.profile==='grocery',409,'Only grocery supports exit verification');const orderId=required(input.orderId,'order ID');
+  const{businessId,branchId}=scope(input);authorize(actor,['cashier'],businessId,branchId);const b=await one('SELECT profile FROM businesses WHERE id=$1',[businessId]);assert(b?.profile==='grocery',409,'Only grocery supports exit verification');const orderId=required(input.orderId,'order ID');
   const r=await sql("UPDATE orders SET exit_verified=true,updated_at=now() WHERE id=$1 AND business_id=$2 AND branch_id=$3 AND status='paid' AND exit_verified=false RETURNING id",[orderId,businessId,branchId]);if(!r.rowCount){const old=await one('SELECT exit_verified FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 AND status=$4',[orderId,businessId,branchId,'paid']);if(old?.exit_verified){await sql("INSERT INTO flags(business_id,branch_id,order_id,type,detected_by) VALUES($1,$2,$3,'duplicate_receipt',$4)",[businessId,branchId,orderId,actor.id]);throw new HttpError(409,'Receipt already verified — duplicate flagged')}throw new HttpError(409,'Paid receipt not found')}return{ok:true};
  }
  case 'saveShoppingSession':{
@@ -275,7 +275,7 @@ export async function action(name,input,req){
   await sql('INSERT INTO shopping_sessions(id,business_id,branch_id,customer_uid,items,count,status) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO UPDATE SET items=$5,count=$6,status=$7,updated_at=now()',[id,businessId,branchId,guestId,JSON.stringify(items),items.reduce((sum,x)=>sum+x.quantity,0),status]);return{ok:true};
  }
  case 'logReceiptPrint':{
-  const{businessId,branchId}=scope(input);const id=required(input.orderId,'order ID');const o=await one('SELECT customer_uid,status FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3',[id,businessId,branchId]);assert(o?.status==='paid',409,'Paid receipt not found');if(o.customer_uid!==guestId)authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);await sql('UPDATE orders SET reprints=reprints+1 WHERE id=$1',[id]);return{ok:true};
+  const{businessId,branchId}=scope(input);const id=required(input.orderId,'order ID');const o=await one('SELECT customer_uid,status FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3',[id,businessId,branchId]);assert(o?.status==='paid',409,'Paid receipt not found');  if(o.customer_uid!==guestId)authorize(actor,['cashier'],businessId,branchId);await sql('UPDATE orders SET reprints=reprints+1 WHERE id=$1',[id]);return{ok:true};
  }
  case 'finishPasswordSetup':{
   assert(actor&&actor.must_change_password,409,'Password setup not required');const password=strongPassword(input.newPassword);

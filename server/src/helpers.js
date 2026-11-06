@@ -16,11 +16,11 @@ export const ROLES=['super_admin','business_admin','cashier','kitchen'];
 export const ROLE_LABELS={super_admin:'Super Admin',business_admin:'General Admin',cashier:'Cashier',kitchen:'Kitchen'};
 export const BRANCH_BOUND=['cashier','kitchen'];
 export const isBranchBound=role=>BRANCH_BOUND.includes(role);
-/** Which roles may sign in through which standalone portal (supervisors may open any station of their stores). */
+/** Each role may sign in only through its own standalone portal. */
 export const PORTALS={
  admin:{label:'Admin console',roles:['super_admin','business_admin']},
- cashier:{label:'Cashier station',roles:['cashier','business_admin','super_admin']},
- kitchen:{label:'Kitchen display',roles:['kitchen','business_admin','super_admin']}
+ cashier:{label:'Cashier station',roles:['cashier']},
+ kitchen:{label:'Kitchen display',roles:['kitchen']}
 };
 /** Can `actor` administer the `target` staff account? */
 export function canManage(actor,target){
@@ -37,7 +37,6 @@ export const NEXT_FULFILLMENT={new:'preparing',preparing:'ready',ready:'collecte
 /** Who may move an order from one fulfilment step to the next. Food: Kitchen prepares, Cashier hands over. Fashion: Cashier does all steps. */
 export function canAdvance(profile,role,from,to){
  if(NEXT_FULFILLMENT[from]!==to)return false;
- if(role==='super_admin'||role==='business_admin')return profile==='food'||profile==='clothing';
  if(profile==='food'){if(role==='kitchen')return to==='preparing'||to==='ready';if(role==='cashier')return to==='collected';return false}
  if(profile==='clothing')return role==='cashier';
  return false;

@@ -4,7 +4,7 @@ export const roleLabel:Record<Role,string>={super_admin:'Super Admin',business_a
 /** Where each role lands after signing in. */
 export const homeFor=(role:Role|null|undefined)=>role==='cashier'?'/cashier':role==='kitchen'?'/kitchen':role?'/admin':'/login';
 export type Portal='admin'|'cashier'|'kitchen';
-export const portalRoles:Record<Portal,Role[]>={admin:['super_admin','business_admin'],cashier:['cashier','business_admin','super_admin'],kitchen:['kitchen','business_admin','super_admin']};
+export const portalRoles:Record<Portal,Role[]>={admin:['super_admin','business_admin'],cashier:['cashier'],kitchen:['kitchen']};
 export const portalName:Record<Portal,string>={admin:'Admin console',cashier:'Cashier station',kitchen:'Kitchen display'};
 export type Business={id:string;name:string;profile:Profile;status:'active'|'suspended';domain?:string;currency?:string;rates?:Record<string,number>;address?:string;phone?:string;taxNumber?:string;receiptFooter?:string;vatRate?:number;createdAt?:any};
 export type Branch={id:string;name:string;active:boolean;createdAt?:any};

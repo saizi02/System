@@ -7,7 +7,7 @@ function scopeOf(q){assert(uuid(q.businessId)&&uuid(q.branchId),400,'businessId 
 const DAY=`created_at >= ($3::date)::timestamp AT TIME ZONE $4 AND created_at < (($3::date)+1)::timestamp AT TIME ZONE $4`;
 /** End-of-day close-out for one branch: what was sold, how it was paid, what cash is still unconfirmed. */
 export async function closeout(actor,q){
- const{businessId,branchId}=scopeOf(q);authorize(actor,['cashier','business_admin','super_admin'],businessId,branchId);
+ const{businessId,branchId}=scopeOf(q);authorize(actor,['cashier'],businessId,branchId);
  const date=isDate(q.date)?q.date:new Intl.DateTimeFormat('en-CA',{timeZone:config.timezone}).format(new Date());
  const args=[businessId,branchId,date,config.timezone];
  const base=`FROM orders WHERE business_id=$1 AND branch_id=$2 AND ${DAY}`;

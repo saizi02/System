@@ -26,7 +26,8 @@ test('fashion orders: Cashier runs every step, Kitchen has no access',()=>{
  for(const [a,b] of [['new','preparing'],['preparing','ready'],['ready','collected']]){assert.ok(canAdvance('clothing','cashier',a,b));assert.ok(!canAdvance('clothing','kitchen',a,b))}
  assert.ok(!canAdvance('grocery','cashier','new','preparing'));
 });
-test('portals: each station admits only its own staff (supervisors may enter)',()=>{
- assert.ok(!PORTALS.kitchen.roles.includes('cashier'));assert.ok(!PORTALS.cashier.roles.includes('kitchen'));assert.ok(!PORTALS.admin.roles.includes('cashier'));
- assert.ok(PORTALS.cashier.roles.includes('business_admin')&&PORTALS.kitchen.roles.includes('super_admin'));
+test('portals: each station admits only its own staff',()=>{
+ assert.deepEqual(PORTALS.admin.roles,['super_admin','business_admin']);
+ assert.deepEqual(PORTALS.cashier.roles,['cashier']);
+ assert.deepEqual(PORTALS.kitchen.roles,['kitchen']);
 });
