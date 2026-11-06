@@ -156,7 +156,7 @@ export default function Receipt() {
               <div className="receipt-break" />
               <div className="receipt-line">
                 <span>Order</span>
-                <b>{order.id}</b>
+                <b>{order.payNumber || order.id}</b>
               </div>
               <div className="receipt-line">
                 <span>Date</span>

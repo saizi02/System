@@ -163,10 +163,10 @@ export default function Cashier() {
     (fresh) => {
       chime.play();
       setNotice(
-        `Order #${orders
-          .find((o) => o.id === fresh[0])
-          ?.id.slice(-7)
-          .toUpperCase()}${fresh.length > 1 ? ` and ${fresh.length - 1} more` : ""} is ready for handover`,
+        `Order #${(() => {
+          const order = orders.find((o) => o.id === fresh[0]);
+          return order?.payNumber || order?.id.slice(-7).toUpperCase() || "";
+        })()}${fresh.length > 1 ? ` and ${fresh.length - 1} more` : ""} is ready for handover`,
       );
       setTimeout(() => setNotice(""), 7000);
     },
@@ -572,7 +572,7 @@ export default function Cashier() {
                         <article className="order-ticket handover" key={o.id}>
                           <div>
                             <span className="eyebrow">
-                              ORDER #{o.id.slice(-7).toUpperCase()}
+                              ORDER #{o.payNumber || o.id.slice(-7).toUpperCase()}
                             </span>
                             <Pill text="ready" />
                           </div>
@@ -640,7 +640,7 @@ export default function Cashier() {
                           {inKitchen.map((o) => (
                             <tr key={o.id}>
                               <td>
-                                <code>#{o.id.slice(-7).toUpperCase()}</code>
+                                <code>#{o.payNumber || o.id.slice(-7).toUpperCase()}</code>
                               </td>
                               <td>
                                 {o.items
@@ -694,7 +694,7 @@ export default function Cashier() {
                       <article className="order-ticket" key={o.id}>
                         <div>
                           <span className="eyebrow">
-                            ORDER #{o.id.slice(-7).toUpperCase()}
+                            ORDER #{o.payNumber || o.id.slice(-7).toUpperCase()}
                           </span>
                           <Pill text={o.fulfillment} />
                         </div>

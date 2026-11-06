@@ -211,7 +211,7 @@ export async function action(name,input,req){
    const totalCents=lines.reduce((sum,l)=>sum+l.lineCents,0);assert(totalCents<=1e9,400,'Order too large');const totalMinor=Math.round(totalCents*rate);const pay=await authorizePayment({method:input.method,amountMinor:totalMinor,currency,orderRef:key,demoOutcome:input.demoOutcome});const extra=options(b.profile,input.method,input,pay.outcome);const status=extra.paymentOutcome==='pending'?'pending_cash':extra.paymentOutcome==='declined'?'failed':'paid';
    if(status==='paid')for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);
    let payNumber=null,payDay=null;
-   if(status==='pending_cash'){
+   if(status==='paid'||status==='pending_cash'){
     payDay=businessDay();
     const counter=(await c.query(`INSERT INTO cash_pay_number_counters(business_id,branch_id,business_day,last_number)
       VALUES($1,$2,$3,1)

@@ -39,7 +39,7 @@ export default function Kitchen(){
  const {items:orders,error:orderErr,synced}=useLive<Order>(ordersRef,[storeId,branchId]);
  const board=orders.filter(o=>o.status==='paid'&&o.fulfillment!=='collected').sort((a,b)=>new Date(a.updatedAt||a.createdAt).getTime()-new Date(b.updatedAt||b.createdAt).getTime());
  const newIds=board.filter(o=>o.fulfillment==='new').map(o=>o.id);
- useArrivals(newIds,synced!==null,fresh=>{chime.play();setBanner(`${fresh.length} new order${fresh.length>1?'s':''} — #${fresh.map(id=>orders.find(o=>o.id===id)?.id.slice(-7).toUpperCase()).join(', #')}`);setTimeout(()=>setBanner(''),6000)});
+ useArrivals(newIds,synced!==null,fresh=>{chime.play();setBanner(`${fresh.length} new order${fresh.length>1?'s':''} — #${fresh.map(id=>{const order=orders.find(o=>o.id===id);return order?.payNumber||order?.id.slice(-7).toUpperCase()||''}).join(', #')}`);setTimeout(()=>setBanner(''),6000)});
  const advance=async(o:Order,next:string)=>{setBusyId(o.id);setError('');try{await call('updateFulfillment',{businessId:storeId,branchId,orderId:o.id,fulfillment:next})}catch(e){setError((e as Error).message)}finally{setBusyId('')}};
  const collectedRecently=orders.filter(o=>o.status==='paid'&&o.fulfillment==='collected').length;
  return <div className="kds">
@@ -56,7 +56,7 @@ export default function Kitchen(){
   :<main className="kds-board">{stages.map(st=>{const list=board.filter(o=>o.fulfillment===st.key);return <section key={st.key} className={'kds-col stage-'+st.key}><header><h2>{st.title}<b>{list.length}</b></h2><span>{st.hint}</span></header>
     <div className="kds-list">{list.map(o=>{const waited=now-new Date(o.updatedAt||o.createdAt).getTime();const late=st.key!=='ready'&&waited>10*60000,warn=st.key!=='ready'&&waited>5*60000;
      return <article key={o.id} className={'kds-ticket'+(late?' late':warn?' warn':'')}>
-      <div className="kds-ticket-head"><strong>#{o.id.slice(-7).toUpperCase()}</strong><span className="kds-time">{clock(waited)}</span></div>
+      <div className="kds-ticket-head"><strong>#{o.payNumber||o.id.slice(-7).toUpperCase()}</strong><span className="kds-time">{clock(waited)}</span></div>
       <div className="kds-chips"><span className={'chip '+(o.serviceType==='dine_in'?'dine':'take')}>{o.serviceType==='dine_in'?'DINE IN':'TAKEAWAY'}</span><span className="chip src">{o.source==='pos'?'Till':o.source==='kiosk'?'Kiosk':'Phone'}</span></div>
       <ul className="kds-items">{o.items.map(i=><li key={i.productId+i.variantId}><b>{i.quantity}×</b> {i.name}{i.variantName!=='Standard'&&<small> {i.variantName}</small>}</li>)}</ul>
       {o.orderNote&&<p className="kds-note"><b>NOTE:</b> {o.orderNote}</p>}
