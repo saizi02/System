@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useState} from 'react';
-import {Link,useNavigate} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {Bell,BellOff,ChefHat,Flame,LogOut,Printer,User,UtensilsCrossed,CheckCircle2,Hand} from 'lucide-react';
 import {listResource,detailResource,filterResource,equals} from '../lib/resources';
 import {useSession} from '../lib/auth';
@@ -49,7 +49,6 @@ export default function Kitchen(){
     {me.role==='super_admin'&&foodStores.length>1&&<select value={storeId} onChange={e=>{setChosenStore(e.target.value);setChosenBranch('')}} aria-label="Store">{foodStores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>}</div>
    <div className="kds-tools"><LiveBadge synced={synced} error={orderErr}/>
     <button className={'kds-btn '+(chime.enabled?'on':'')} onClick={chime.toggle} title="Sound alert for new orders">{chime.enabled?<Bell size={16}/>:<BellOff size={16}/>}{chime.enabled?'Sound on':'Sound off'}</button>
-    {supervisor&&<Link className="kds-btn" to="/admin">Admin</Link>}
     <button className="kds-btn" onClick={()=>setAccount(true)}><User size={16}/>{me.user?.displayName||'Account'}</button>{me.role&&<RoleBadge role={me.role}/>}
     <button className="kds-btn" onClick={()=>void me.logout().then(()=>go('/kitchen'))}><LogOut size={16}/> Sign out</button></div></header>
   {banner&&<div className="kds-banner" role="status"><Flame size={18}/> {banner}</div>}
