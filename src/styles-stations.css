@@ -42,9 +42,9 @@
 .station-denied{gap:14px}.station-denied p{color:#abbcda;margin:0}.denied-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px}
 
 /* Kitchen display (white and Tillcore blue, large touch targets) */
-.kds{min-height:100vh;background:#f4f8fd;color:#18324f;display:flex;flex-direction:column;font-family:'DM Sans',system-ui,sans-serif}
+.kds{min-height:100vh;background:#e7eff8;color:#18324f;display:flex;flex-direction:column;font-family:'DM Sans',system-ui,sans-serif}
 .kds .brand{color:#18324f}.kds .brand small{color:#71849d}
-.kds-bar{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 26px;background:#fff;border-bottom:1px solid #dbe7f5;box-shadow:0 3px 18px #193c6520}
+.kds-bar{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 26px;background:#eef4fb;border-bottom:1px solid #c8d8eb;box-shadow:0 3px 18px #193c6520}
 .kds-id{display:flex;align-items:center;gap:20px}.kds-title{display:inline-flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.14em;font-size:12px;color:#2365d9}
 .kds-where{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:15px;color:#415b78}.kds-where b{font-size:17px;color:#18324f}.kds-where span{color:#71849d}
 .kds-where select{background:#fff;color:#18324f;border-color:#cbdcec;padding:8px 10px}
@@ -56,7 +56,7 @@
 @keyframes kdsflash{50%{background:#4d93ed}}
 .kds-error{margin:14px 26px 0}
 .kds-board{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:22px 26px;align-items:start}
-.kds-col{background:#fff;border:1px solid #dbe7f5;box-shadow:0 7px 24px #193c650b;border-radius:18px;min-height:60vh;display:flex;flex-direction:column}
+.kds-col{background:#f8fbff;border:1px solid #c7d8eb;box-shadow:0 7px 24px #193c6512;border-radius:18px;min-height:60vh;display:flex;flex-direction:column}
 .kds-col>header{padding:16px 20px;border-bottom:1px solid #e8eff7;border-top:5px solid var(--stage,#2365d9);border-radius:18px 18px 0 0}
 .kds-col h2{margin:0;font-size:22px;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}.kds-col h2 b{background:var(--stage,#4f8cff);color:#071022;border-radius:99px;font-size:14px;padding:2px 11px}
 .kds-col>header span{font-size:12px;color:#71849d}

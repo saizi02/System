@@ -1,14 +1,13 @@
 import {useEffect,useMemo,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {Bell,BellOff,ChefHat,Flame,LogOut,Printer,User,UtensilsCrossed,CheckCircle2,Hand} from 'lucide-react';
+import {Bell,BellOff,ChefHat,Flame,LogOut,Printer,UtensilsCrossed,CheckCircle2,Hand} from 'lucide-react';
 import {listResource,detailResource,filterResource,equals} from '../lib/resources';
 import {useSession} from '../lib/auth';
 import {useDoc,useLive} from '../lib/live';
 import {call} from '../lib/api';
 import {useArrivals,useChime} from '../lib/alerts';
 import {printKitchenTicket} from '../lib/printing';
-import {Brand,LiveBadge,RoleBadge} from '../components/UI';
-import {AccountDialog} from '../components/Account';
+import {Brand,LiveBadge} from '../components/UI';
 import type {Branch,Business,Order} from '../lib/types';
 
 const stages=[
@@ -23,7 +22,7 @@ const clock=(ms:number)=>{const s=Math.max(0,Math.floor(ms/1000));return `${Stri
  */
 export default function Kitchen(){
  const me=useSession(),go=useNavigate(),supervisor=me.role!=='kitchen';
- const [chosenStore,setChosenStore]=useState(me.businessId||''),[chosenBranch,setChosenBranch]=useState(''),[error,setError]=useState(''),[busyId,setBusyId]=useState(''),[account,setAccount]=useState(false),[now,setNow]=useState(Date.now()),[banner,setBanner]=useState('');
+ const [chosenStore,setChosenStore]=useState(me.businessId||''),[chosenBranch,setChosenBranch]=useState(''),[error,setError]=useState(''),[busyId,setBusyId]=useState(''),[now,setNow]=useState(Date.now()),[banner,setBanner]=useState('');
  const chime=useChime('sstwas-kitchen-chime');
  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[]);
  const allRef=useMemo(()=>me.role==='super_admin'?listResource('businesses'):null,[me.role]);
@@ -49,7 +48,6 @@ export default function Kitchen(){
     {me.role==='super_admin'&&foodStores.length>1&&<select value={storeId} onChange={e=>{setChosenStore(e.target.value);setChosenBranch('')}} aria-label="Store">{foodStores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>}</div>
    <div className="kds-tools"><LiveBadge synced={synced} error={orderErr}/>
     <button className={'kds-btn '+(chime.enabled?'on':'')} onClick={chime.toggle} title="Sound alert for new orders">{chime.enabled?<Bell size={16}/>:<BellOff size={16}/>}{chime.enabled?'Sound on':'Sound off'}</button>
-    <button className="kds-btn" onClick={()=>setAccount(true)}><User size={16}/>{me.user?.displayName||'Account'}</button>{me.role&&<RoleBadge role={me.role}/>}
     <button className="kds-btn" onClick={()=>void me.logout().then(()=>go('/kitchen'))}><LogOut size={16}/> Sign out</button></div></header>
   {banner&&<div className="kds-banner" role="status"><Flame size={18}/> {banner}</div>}
   {(error||orderErr)&&<p className="error kds-error" role="alert">{error||orderErr}</p>}
@@ -68,6 +66,5 @@ export default function Kitchen(){
      {!list.length&&<p className="kds-none">{st.key==='new'?'No new orders':st.key==='preparing'?'Nothing on the line':'Nothing waiting'}</p>}</div></section>})}
    </main>}
   {store&&<footer className="kds-foot"><CheckCircle2 size={14}/> {collectedRecently} order{collectedRecently===1?'':'s'} collected in the last 30 minutes · Orders arrive automatically from phones, kiosks and the till</footer>}
-  {account&&<AccountDialog onClose={()=>setAccount(false)}/>}
  </div>;
 }
