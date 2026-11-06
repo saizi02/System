@@ -5,7 +5,7 @@ import {listResource,detailResource,filterResource,equals} from '../lib/resource
 import {QRCodeSVG} from 'qrcode.react';
 import ProductLabels from '../components/ProductLabels';import {useConfig} from '../lib/config';import DayReport from '../components/DayReport';import ScanField from '../components/ScanField';import {inspectBarcode,cleanCode} from '../lib/barcode';import {scanTone} from '../lib/hardwareScanner';import {productLink} from '../lib/scan';
 import {Activity,BarChart3,ChefHat,ClipboardList,Crown,ExternalLink,FileWarning,Home,KeyRound,LogOut,Menu,Monitor,
- Package,Plus,Printer,QrCode,Settings,ShieldCheck,ShoppingCart,Store,Tablet,Truck,UserCog,Users,Wallet,Warehouse,X} from 'lucide-react';
+ Package,Plus,Printer,QrCode,ScanLine,Settings,ShieldCheck,ShoppingCart,Store,Tablet,Truck,UserCog,Users,Wallet,Warehouse,X} from 'lucide-react';
 import {useSession} from '../lib/auth';
 import {useDoc,useLive} from '../lib/live';
 import {call,uploadProductImage} from '../lib/api';
@@ -130,7 +130,7 @@ function Stores({stores,busy,run,onSelect}:{stores:Business[];busy:boolean;run:R
   </form>
  </Card>}<Card title="Registered stores" info="Grocery, food and fashion retailers on one platform."><Table columns={['Store','Profile','Status','Actions']}>{stores.map(b=><tr key={b.id}><td><strong>{b.name}</strong></td><td>{profileLabel(b.profile)}</td><td><Pill text={b.status}/></td><td><div className="table-actions"><button onClick={()=>onSelect(b.id)}>Manage</button><button disabled={busy} onClick={()=>void run('updateBusiness',{businessId:b.id,status:b.status==='active'?'suspended':'active'},'Store status updated')}>{b.status==='active'?'Suspend':'Activate'}</button></div></td></tr>)}</Table>{!stores.length&&<Empty title="No stores yet"/>}</Card></>;
 }
-const roleBlurb:Record<Role,string>={super_admin:'Super Admin — whole platform, all stores',business_admin:'General Admin — manages one store',cashier:'Cashier — checkout, cash and handover',kitchen:'Kitchen — food preparation display'};
+const roleBlurb:Record<Role,string>={super_admin:'Super Admin — whole platform, all stores',business_admin:'General Admin — manages one store',cashier:'Cashier — checkout, cash and handover',kitchen:'Kitchen — food preparation display',exit_verifier:'Exit Verifier — verify grocery receipts'};
 const stationUrl=(path:string)=>`${window.location.origin}${path}`;
 function StaffManager({meId,owner,storeId,stores,members,busy,run}:{meId:string;owner:boolean;storeId:string;stores:Business[];members:Membership[];busy:boolean;run:Run}){
  const [name,setName]=useState(''),[email,setEmail]=useState(''),[role,setRole]=useState<Role>(owner?'business_admin':'cashier'),[formStore,setFormStore]=useState(storeId),[branch,setBranch]=useState('');
@@ -140,18 +140,18 @@ function StaffManager({meId,owner,storeId,stores,members,busy,run}:{meId:string;
  const branchRef=useMemo(()=>target?listResource('businesses',target.id,'branches'):null,[target?.id]);
  const {items:branches}=useLive<Branch>(branchRef,[target?.id]);
  const isFood=target?.profile==='food';
- const roles:Role[]=owner?['super_admin','business_admin','cashier',...(isFood?['kitchen' as Role]:[])]:['cashier',...(isFood?['kitchen' as Role]:[])];
+ const roles:Role[]=owner?['super_admin','business_admin','cashier',...(isFood?['kitchen' as Role]:[]),...(target?.profile==='grocery'?['exit_verifier' as Role]:[])]:['cashier',...(isFood?['kitchen' as Role]:[]),...(target?.profile==='grocery'?['exit_verifier' as Role]:[])];
  useEffect(()=>{if(!roles.includes(role))setRole(owner?'business_admin':'cashier')},[role,isFood,owner]);
  useEffect(()=>{if(!branches.some(b=>b.id===branch))setBranch(branches[0]?.id||'')},[branches,branch]);
- const needsStore=role!=='super_admin',needsBranch=role==='cashier'||role==='kitchen';
+ const needsStore=role!=='super_admin',needsBranch=role==='cashier'||role==='kitchen'||role==='exit_verifier';
  const submit=async(e:FormEvent)=>{e.preventDefault();setFormError('');setCreated(null);
   if(!passwordOk(password)){setFormError('The password does not meet all requirements below');return}
   if(password!==confirm){setFormError('The passwords do not match');return}
   const r=await run('createStaff',{role,displayName:name,email,password,requireChange,...(needsStore?{businessId:targetId}:{}),...(needsBranch?{branchId:branch}:{})},`${roleLabel[role]} account created`);
-  if(r){setCreated({email:email.trim().toLowerCase(),role,password,path:role==='cashier'?'/cashier':role==='kitchen'?'/kitchen':'/admin'});setName('');setEmail('');setPassword('');setConfirm('')}};
- const canAct=(m:Membership)=>m.uid!==meId&&(owner||['cashier','kitchen'].includes(m.role));
+  if(r){setCreated({email:email.trim().toLowerCase(),role,password,path:role==='cashier'?'/cashier':role==='kitchen'?'/kitchen':role==='exit_verifier'?'/exit-verifier':'/admin'});setName('');setEmail('');setPassword('');setConfirm('')}};
+ const canAct=(m:Membership)=>m.uid!==meId&&(owner||['cashier','kitchen','exit_verifier'].includes(m.role));
  return <>
-  <Card title="Create an account" info={owner?'Super Admins can create other Super Admins, General Admins (one store each), Cashiers and Kitchen staff.':'General Admins create Cashier and Kitchen accounts for their own store.'}>
+  <Card title="Create an account" info={owner?'Super Admins can create Admins and station accounts for stores.':'General Admins create Cashier, Kitchen and Exit Verifier accounts for their own store.'}>
    <form onSubmit={e=>void submit(e)} className="form-grid staff-form">
     <Input label="Full name" value={name} onChange={setName} required/>
     <Input label="Sign-in email" value={email} onChange={setEmail} type="email" required/>
@@ -173,7 +173,7 @@ function StaffManager({meId,owner,storeId,stores,members,busy,run}:{meId:string;
    {!members.length&&<Empty title="No staff accounts yet"/>}
   </Card>
   <Card title="Stand-alone stations" info="Each dashboard has its own address and sign-in. Open it on a tablet or second screen — it stays in sync through the shared database."><div className="qr-grid station-links">
-   {[{path:'/cashier',title:'Cashier station',icon:<Wallet/>,text:'Cash confirmation, POS, handover'},{path:'/kitchen',title:'Kitchen display',icon:<ChefHat/>,text:'Food stores only'},{path:'/admin',title:'Admin console',icon:<ShieldCheck/>,text:'Super Admin & General Admin'}].map(x=><div className="qr-box" key={x.path}><QRCodeSVG value={stationUrl(x.path)} size={120}/><h3>{x.icon} {x.title}</h3><small>{stationUrl(x.path)}</small><p>{x.text}</p><a className="btn btn-outline" href={x.path} target="_blank" rel="noreferrer">Open <ExternalLink size={14}/></a></div>)}
+   {[{path:'/cashier',title:'Cashier station',icon:<Wallet/>,text:'Cash confirmation, POS, handover'},{path:'/kitchen',title:'Kitchen display',icon:<ChefHat/>,text:'Food stores only'},{path:'/exit-verifier',title:'Exit verification',icon:<ScanLine/>,text:'Grocery receipt verification'},{path:'/admin',title:'Admin console',icon:<ShieldCheck/>,text:'Super Admin & General Admin'}].map(x=><div className="qr-box" key={x.path}><QRCodeSVG value={stationUrl(x.path)} size={120}/><h3>{x.icon} {x.title}</h3><small>{stationUrl(x.path)}</small><p>{x.text}</p><a className="btn btn-outline" href={x.path} target="_blank" rel="noreferrer">Open <ExternalLink size={14}/></a></div>)}
   </div></Card>
   {resetting&&<ResetPassword member={resetting} busy={busy} run={run} onClose={()=>setResetting(null)}/>}
  </>;

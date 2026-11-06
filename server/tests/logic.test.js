@@ -4,7 +4,7 @@ test('no fractional quantities or weighing scales',()=>{assert.throws(()=>cartIt
 test('duplicate cart lines refused',()=>assert.throws(()=>cartItems([{productId:'a',variantId:'d',quantity:1},{productId:'a',variantId:'d',quantity:1}])));
 test('simulated payments approved, declined or pending cashier',()=>{assert.equal(options('grocery','ecocash',{demoOutcome:'declined'}).paymentOutcome,'declined');assert.equal(options('food','card',{}).paymentOutcome,'approved');assert.equal(options('clothing','cash',{}).paymentOutcome,'pending')});
 test('food-only service options',()=>{assert.equal(options('food','card',{serviceType:'dine_in'}).serviceType,'dine_in');assert.equal(options('grocery','card',{serviceType:'dine_in'}).serviceType,null)});
-test('branch restrictions enforced for cashier and kitchen',()=>{assert.throws(()=>authorize({role:'cashier',business_id:'A',branch_id:'1'},['cashier'],'A','2'),HttpError);assert.throws(()=>authorize({role:'kitchen',business_id:'A',branch_id:'1'},['kitchen'],'A','2'),HttpError);assert.ok(isBranchBound('kitchen')&&!isBranchBound('business_admin'))});
+test('branch restrictions enforced for cashier, kitchen and exit verifier',()=>{assert.throws(()=>authorize({role:'cashier',business_id:'A',branch_id:'1'},['cashier'],'A','2'),HttpError);assert.throws(()=>authorize({role:'kitchen',business_id:'A',branch_id:'1'},['kitchen'],'A','2'),HttpError);assert.throws(()=>authorize({role:'exit_verifier',business_id:'A',branch_id:'1'},['exit_verifier'],'A','2'),HttpError);assert.ok(isBranchBound('exit_verifier')&&!isBranchBound('business_admin'))});
 test('only Super Admin can manage businesses',()=>{assert.throws(()=>authorize({role:'cashier'},['super_admin']),HttpError);assert.throws(()=>authorize({role:'business_admin',business_id:'A'},['super_admin'],'A'),HttpError)});
 test('General Admin cannot reach another store',()=>assert.throws(()=>authorize({role:'business_admin',business_id:'A'},['business_admin'],'B'),HttpError));
 test('temporary-password accounts are locked out until password changed',()=>assert.throws(()=>authorize({role:'cashier',business_id:'A',branch_id:'1',must_change_password:true},['cashier'],'A','1'),HttpError));
@@ -30,4 +30,5 @@ test('portals: each station admits only its own staff',()=>{
  assert.deepEqual(PORTALS.admin.roles,['super_admin','business_admin']);
  assert.deepEqual(PORTALS.cashier.roles,['cashier']);
  assert.deepEqual(PORTALS.kitchen.roles,['kitchen']);
+ assert.deepEqual(PORTALS.exit.roles,['exit_verifier']);
 });

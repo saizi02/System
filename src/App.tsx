@@ -10,6 +10,7 @@ import Shop from './pages/Shop';
 import Receipt from './pages/Receipt';
 import Admin from './pages/Admin';
 import Cashier from './pages/Cashier';
+import ExitVerifier from './pages/ExitVerifier';
 import ChangePassword from './pages/ChangePassword';
 import ErrorBoundary from './components/ErrorBoundary';
 /** In single-store installs customers go straight to their store; shared servers show the store list. */
@@ -31,6 +32,7 @@ export default function App(){const s=useSession(),where=useLocation();if(s.load
  <Route path="/business-admin" element={<Navigate to="/admin" replace/>}/>
  <Route path="/cashier" element={<StationGate portal="cashier"><Cashier/></StationGate>}/>
  <Route path="/kitchen" element={<StationGate portal="kitchen"><Kitchen/></StationGate>}/>
+ <Route path="/exit-verifier" element={<StationGate portal="exit"><ExitVerifier/></StationGate>}/>
  <Route path="/dashboard" element={<Navigate to={homeFor(s.role)} replace/>}/>
  <Route path="*" element={<Navigate to="/" replace/>}/>
  </Routes></ErrorBoundary>;

@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import type {ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowRight,ChefHat,LockKeyhole,LogOut,ShieldCheck,Wallet} from 'lucide-react';
+import {ArrowRight,ChefHat,LockKeyhole,LogOut,ScanLine,ShieldCheck,Wallet} from 'lucide-react';
 import {useSession} from '../lib/auth';
 import {homeFor,portalName,portalRoles,roleLabel,type Portal} from '../lib/types';
 import {Brand} from './UI';
@@ -9,6 +9,7 @@ const meta:Record<Portal,{icon:ReactNode;tag:string;blurb:string;accent:string}>
  admin:{icon:<ShieldCheck size={64}/>,tag:'ADMINISTRATION',blurb:'Stores, products, inventory, staff accounts and business reports.',accent:'admin'},
  cashier:{icon:<Wallet size={64}/>,tag:'CASHIER STATION',blurb:'Confirm cash, assist shoppers, hand over orders and verify grocery exits.',accent:'cashier'},
  kitchen:{icon:<ChefHat size={64}/>,tag:'KITCHEN DISPLAY',blurb:'Live food orders from the tills. Prepare, mark ready, and the cashier is told.',accent:'kitchen'},
+ exit:{icon:<ScanLine size={64}/>,tag:'EXIT VERIFICATION',blurb:'Verify paid grocery receipts and prevent duplicate exit checks.',accent:'exit'},
 };
 /** Stand-alone sign-in for one dashboard. The server only accepts accounts that belong to this portal. */
 export function StationLogin({portal}:{portal:Portal}){
@@ -20,7 +21,7 @@ export function StationLogin({portal}:{portal:Portal}){
    <label>Password<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label>
    {error&&<p className="error" role="alert">{error}</p>}
    <button disabled={busy} type="submit" className="btn btn-primary">{busy?'Signing in…':'Open station'} <ArrowRight size={18}/></button>
-   <div className="station-switch"><span>Other stations:</span>{(['admin','cashier','kitchen'] as Portal[]).filter(p=>p!==portal).map(p=><Link key={p} to={'/'+(p==='admin'?'admin':p)}>{portalName[p]}</Link>)}</div>
+   <div className="station-switch"><span>Other stations:</span>{(['admin','cashier','kitchen','exit'] as Portal[]).filter(p=>p!==portal).map(p=><Link key={p} to={p==='exit'?'/exit-verifier':'/'+p}>{portalName[p]}</Link>)}</div>
    <Link className="back-link" to="/">Customer storefront</Link></form></div></main>;
 }
 /** Shown when a signed-in account opens a dashboard that belongs to a different role. */

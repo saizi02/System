@@ -47,12 +47,11 @@ import { printKitchenTicket } from "../lib/printing";
 import "../components/PaymentSimulator.css";
 
 type Section =
-  "overview" | "cash" | "collection" | "verify" | "history" | "closeout";
+  "overview" | "cash" | "collection" | "history" | "closeout";
 const sectionNames: Record<Section, string> = {
   overview: "Cashier overview",
   cash: "Cash payment queue",
   collection: "Order handover",
-  verify: "Grocery exit verification",
   history: "Transactions & receipts",
   closeout: "End-of-day report",
 };
@@ -60,7 +59,6 @@ const icons: Record<Section, ReactNode> = {
   overview: <LayoutDashboard />,
   cash: <Wallet />,
   collection: <ChefHat />,
-  verify: <ScanLine />,
   history: <ClipboardCheck />,
   closeout: <Printer />,
 };
@@ -83,9 +81,7 @@ export default function Cashier() {
     [menu, setMenu] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState(""),
-    [busy, setBusy] = useState(false),
-    [receiptId, setReceiptId] = useState(""),
-    [scanning, setScanning] = useState(false);
+    [busy, setBusy] = useState(false);
   const allRef = useMemo(
     () => (superAdmin ? listResource("businesses") : null),
     [superAdmin],
@@ -171,7 +167,6 @@ export default function Cashier() {
       setTimeout(() => setNotice(""), 7000);
     },
   );
-  const selected = orders.find((o) => o.id === receiptId.trim());
   const run = async (
     name: string,
     data: Record<string, unknown>,
@@ -218,9 +213,7 @@ export default function Cashier() {
   const menuItems: Section[] = [
     "overview",
     "cash",
-    ...(store?.profile === "grocery"
-      ? (["verify"] as Section[])
-      : (["collection"] as Section[])),
+    "collection",
     "history",
     "closeout",
   ];
@@ -416,7 +409,7 @@ export default function Cashier() {
                         </h3>
                         <p>
                           {store?.profile === "grocery"
-                            ? "Verify a paid grocery receipt once."
+                            ? "Hand over collected grocery orders."
                             : isFood
                               ? "Hand over orders the kitchen has marked ready."
                               : "Prepare and hand over fashion orders."}
@@ -425,9 +418,7 @@ export default function Cashier() {
                           className="btn btn-outline"
                           onClick={() =>
                             change(
-                              store?.profile === "grocery"
-                                ? "verify"
-                                : "collection",
+                              "collection",
                             )
                           }
                         >
@@ -729,75 +720,6 @@ export default function Cashier() {
                   {!queue.length && (
                     <Empty title="No orders awaiting collection" />
                   )}
-                </section>
-              )}
-              {view === "verify" && (
-                <section className="panel">
-                  <div className="panel-head">
-                    <div>
-                      <h2>Grocery receipt verification</h2>
-                      <p>
-                        Scan the exit QR or type the transaction ID. Already
-                        verified receipts are blocked.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="verify-box">
-                    <label className="field">
-                      Receipt transaction ID
-                      <input
-                        value={receiptId}
-                        onChange={(e) => setReceiptId(e.target.value.trim())}
-                        placeholder="Paste or scan order ID"
-                      />
-                    </label>
-                    <div className="form-actions">
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => setScanning((v) => !v)}
-                      >
-                        <ScanLine size={16} /> Use camera
-                      </button>
-                      <button
-                        className="btn btn-primary"
-                        disabled={busy || !receiptId.trim()}
-                        onClick={() =>
-                          void run(
-                            "verifyExit",
-                            { orderId: receiptId.trim() },
-                            "Receipt verified — customer may exit",
-                          )
-                        }
-                      >
-                        Verify purchase
-                      </button>
-                    </div>
-                    {scanning && (
-                      <Scanner
-                        caption="Scan the receipt QR"
-                        onScan={(s) => {
-                          setReceiptId(s);
-                          setScanning(false);
-                        }}
-                      />
-                    )}
-                    {selected && (
-                      <div className="verification-detail">
-                        <strong>Order {selected.id}</strong>
-                        <Pill text={selected.status} />
-                        <p>
-                          {selected.items
-                            .map((i) => `${i.quantity} × ${i.name}`)
-                            .join(" • ")}
-                        </p>
-                        {selected.exitVerified && (
-                          <p className="error">
-                            This receipt was already verified.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </section>
               )}
               {view === "history" && (

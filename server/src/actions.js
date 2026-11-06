@@ -112,7 +112,7 @@ export async function action(name,input,req){
   authorize(actor,['super_admin','business_admin']);
   const isSuper=actor.role==='super_admin';
   const role=required(input.role,'role',40);assert(ROLES.includes(role),400,'Unknown role');
-  if(!isSuper)assert(['cashier','kitchen'].includes(role),403,'General Admins can only create Cashier and Kitchen accounts');
+  if(!isSuper)assert(['cashier','kitchen','exit_verifier'].includes(role),403,'General Admins can only create operational station accounts');
   const email=required(input.email,'email',250).toLowerCase();assert(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email),400,'Invalid email');
   const displayName=required(input.displayName,'full name',90);
   let businessId=null,branchId=null;
@@ -121,7 +121,8 @@ export async function action(name,input,req){
    if(!isSuper&&input.businessId)assert(input.businessId===actor.business_id,403,'Different business');
    const business=await one('SELECT id,profile FROM businesses WHERE id=$1',[businessId]);assert(business,404,'Store not found');
    if(role==='kitchen')assert(business.profile==='food',409,'Kitchen accounts are only available for Food stores');
-   if(role==='cashier'||role==='kitchen'){branchId=required(input.branchId,'branch');assert(await one('SELECT id FROM branches WHERE id=$1 AND business_id=$2',[branchId,businessId]),400,'Invalid branch')}
+   if(role==='exit_verifier')assert(business.profile==='grocery',409,'Exit Verifier accounts are only available for Grocery stores');
+   if(role==='cashier'||role==='kitchen'||role==='exit_verifier'){branchId=required(input.branchId,'branch');assert(await one('SELECT id FROM branches WHERE id=$1 AND business_id=$2',[branchId,businessId]),400,'Invalid branch')}
   }
   // The creator chooses the initial password. If none is supplied the server generates a one-time temporary one.
   const supplied=typeof input.password==='string'&&input.password.length>0;
@@ -267,7 +268,7 @@ export async function action(name,input,req){
   await audit(businessId,actor.id,'order.fulfillment',{orderId,from:order.fulfillment,to:target,station:actor.role});return{ok:true};
  }
  case 'verifyExit':{
-  const{businessId,branchId}=scope(input);authorize(actor,['cashier'],businessId,branchId);const b=await one('SELECT profile FROM businesses WHERE id=$1',[businessId]);assert(b?.profile==='grocery',409,'Only grocery supports exit verification');const orderId=required(input.orderId,'order ID');
+  const{businessId,branchId}=scope(input);authorize(actor,['exit_verifier'],businessId,branchId);const b=await one('SELECT profile FROM businesses WHERE id=$1',[businessId]);assert(b?.profile==='grocery',409,'Only grocery supports exit verification');const orderId=required(input.orderId,'order ID');
   const r=await sql("UPDATE orders SET exit_verified=true,updated_at=now() WHERE id=$1 AND business_id=$2 AND branch_id=$3 AND status='paid' AND exit_verified=false RETURNING id",[orderId,businessId,branchId]);if(!r.rowCount){const old=await one('SELECT exit_verified FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 AND status=$4',[orderId,businessId,branchId,'paid']);if(old?.exit_verified){await sql("INSERT INTO flags(business_id,branch_id,order_id,type,detected_by) VALUES($1,$2,$3,'duplicate_receipt',$4)",[businessId,branchId,orderId,actor.id]);throw new HttpError(409,'Receipt already verified — duplicate flagged')}throw new HttpError(409,'Paid receipt not found')}return{ok:true};
  }
  case 'saveShoppingSession':{

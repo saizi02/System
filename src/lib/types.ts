@@ -1,11 +1,11 @@
 export type Profile='grocery'|'food'|'clothing';
-export type Role='super_admin'|'business_admin'|'cashier'|'kitchen';
-export const roleLabel:Record<Role,string>={super_admin:'Super Admin',business_admin:'General Admin',cashier:'Cashier',kitchen:'Kitchen'};
+export type Role='super_admin'|'business_admin'|'cashier'|'kitchen'|'exit_verifier';
+export const roleLabel:Record<Role,string>={super_admin:'Super Admin',business_admin:'General Admin',cashier:'Cashier',kitchen:'Kitchen',exit_verifier:'Exit Verifier'};
 /** Where each role lands after signing in. */
-export const homeFor=(role:Role|null|undefined)=>role==='cashier'?'/cashier':role==='kitchen'?'/kitchen':role?'/admin':'/login';
-export type Portal='admin'|'cashier'|'kitchen';
-export const portalRoles:Record<Portal,Role[]>={admin:['super_admin','business_admin'],cashier:['cashier'],kitchen:['kitchen']};
-export const portalName:Record<Portal,string>={admin:'Admin console',cashier:'Cashier station',kitchen:'Kitchen display'};
+export const homeFor=(role:Role|null|undefined)=>role==='cashier'?'/cashier':role==='kitchen'?'/kitchen':role==='exit_verifier'?'/exit-verifier':role?'/admin':'/login';
+export type Portal='admin'|'cashier'|'kitchen'|'exit';
+export const portalRoles:Record<Portal,Role[]>={admin:['super_admin','business_admin'],cashier:['cashier'],kitchen:['kitchen'],exit:['exit_verifier']};
+export const portalName:Record<Portal,string>={admin:'Admin console',cashier:'Cashier station',kitchen:'Kitchen display',exit:'Exit verification'};
 export type Business={id:string;name:string;profile:Profile;status:'active'|'suspended';domain?:string;currency?:string;rates?:Record<string,number>;address?:string;phone?:string;taxNumber?:string;receiptFooter?:string;vatRate?:number;createdAt?:any};
 export type Branch={id:string;name:string;active:boolean;createdAt?:any};
 export type Variant={id:string;name:string;barcode?:string;surchargeCents?:number};

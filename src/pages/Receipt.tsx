@@ -234,7 +234,7 @@ export default function Receipt() {
                   <strong>{order.id}</strong>
                   <small>
                     {business?.profile === "grocery"
-                      ? "Show cashier for exit verification"
+                      ? "Show an exit verifier for receipt verification"
                       : business?.profile === "food"
                         ? "Show cashier when collecting food"
                         : "Present when collecting clothing"}
