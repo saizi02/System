@@ -136,9 +136,11 @@ export default function Cashier() {
     synced,
   } = useLive<Order>(ordersRef, [storeId, branchId]);
   const pendingAll = orders.filter((o) => o.status === "pending_cash");
-  const needle = cashFind.trim().replace(/^#/, "").toLowerCase();
+  const needle = cashFind.trim().replace(/^#/, "").replace(/\D/g, "");
   const pending = needle
-    ? pendingAll.filter((o) => o.id.toLowerCase().includes(needle))
+    ? pendingAll.filter(
+        (o) => o.payNumber?.replace(/\D/g, "") === needle,
+      )
     : pendingAll;
   const paid = orders.filter((o) => o.status === "paid");
   const queue = paid.filter((o) => o.fulfillment !== "collected");
@@ -444,8 +446,10 @@ export default function Cashier() {
                     <input
                       value={cashFind}
                       onChange={(e) => setCashFind(e.target.value)}
-                      placeholder="Find by order number, e.g. #A1B2C3D"
-                      aria-label="Find order"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="Enter pay number, e.g. 0147"
+                      aria-label="Find by cash pay number"
                     />
                     <button
                       className="btn btn-outline"
@@ -486,7 +490,7 @@ export default function Cashier() {
                         {pending.map((o) => (
                           <tr key={o.id}>
                             <td>
-                              <code>#{o.id.slice(-7).toUpperCase()}</code>
+                              <code className="cash-pay-code">#{o.payNumber || "----"}</code>
                             </td>
                             <td>
                               {o.source === "kiosk"
@@ -894,7 +898,10 @@ export default function Cashier() {
             </p>
             <div className="cash-confirm-receipt">
               <span>TRANSACTION</span>
-              <strong>{cashReview.id}</strong>
+              <span>PAY NUMBER</span>
+              <strong className="cash-pay-number">
+                #{cashReview.payNumber || "----"}
+              </strong>
               <span>ORDER ITEMS</span>
               {cashReview.items.map((i) => (
                 <div key={`${i.productId}-${i.variantId}`}>

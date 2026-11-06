@@ -118,8 +118,11 @@ export default function Receipt() {
             </div>
             {order.status === "pending_cash" && (
               <div className="cash-pending" role="status">
-                <span>Show this to the cashier</span>
-                <strong>#{order.id.slice(-7).toUpperCase()}</strong>
+                <span>Your cash payment number</span>
+                <strong className="cash-pay-number">
+                  {order.payNumber || order.id.slice(-4).toUpperCase()}
+                </strong>
+                <small>Give this number to the cashier</small>
                 <QRCodeSVG
                   value={order.id}
                   size={150}
