@@ -31,6 +31,6 @@ services:
       - key: PAYNOW_AUTH_EMAIL
         sync: false
       - key: PAYNOW_MODE
-        value: test
+        value: live
       - key: PAYNOW_CURRENCY
         value: USD
