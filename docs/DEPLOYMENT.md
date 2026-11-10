@@ -52,7 +52,7 @@ The repository includes `render.yaml` as a Render Blueprint and uses the Neon Po
 3. In the service Environment settings, enter the Neon pooled connection string as `DATABASE_URL` and the direct connection string as `DATABASE_URL_UNPOOLED`.
 4. Optionally set `APP_ORIGIN` to the exact public HTTPS URL, for example `https://sstwas.onrender.com`. Render provides `RENDER_EXTERNAL_URL` automatically, so this is only needed for a custom domain.
 5. Render generates `SESSION_SECRET` automatically. For a single-store deployment, set `STORE_MODE=single` and `STORE_ID` to the store UUID.
-6. EcoCash, bank-transfer, and card demonstrations are enabled through `ALLOW_SIMULATED_PAYMENTS=true`. They do not move real money. Connect an approved gateway before offering live mobile or bank payments.
+6. Configure `PAYMENT_PROVIDER=paynow`, your Paynow integration ID, key and account email, and keep `PAYNOW_MODE=test` until you have verified the checkout. See [PAYNOW.md](PAYNOW.md). Demo approvals are disabled by default.
 
 ## 5. Hardware
 - **Kiosk:** tablet or touchscreen PC, set to never sleep, running the installed kiosk app (pair it in Admin, Kiosks). Connect the **barcode scanner** by USB or Bluetooth (see `BARCODE-SCANNER.md`). Grocery kiosks have no camera scanning; the scanner and an on-screen keypad are used.
@@ -65,8 +65,7 @@ Built in: sign-in lockout after repeated failures, rate limits, HTTP security he
 Yours: keep `deploy/.env` private, use unique strong passwords for each staff member, disable accounts of people who leave (Admin, Staff), apply system updates, and keep backups off-site.
 
 ## 7. Payments
-Payments are **simulated by default**. In production the simulated card and EcoCash options are switched off automatically (they would approve any payment), so customers can pay **cash at the cashier**, which the cashier confirms. For a demonstration set `ALLOW_SIMULATED_PAYMENTS=true`.
-To connect a real gateway, add a provider in `server/src/payments.js`: implement `authorize({method,amountMinor,currency,orderRef})` returning `{outcome:'approved'|'declined'|'pending', reference}`, register it in `providers`, and set `PAYMENT_PROVIDER=<name>`. The reference is stored on the order and appears in the sales export. Keep gateway keys in environment variables and have your gateway's webhook confirm payments before you set `approved`. This needs the gateway's own API documentation and a test account; ask your gateway for them.
+Payments are **cash-only by default** so no demo approval can be mistaken for a real payment. To accept mobile or card payments, configure Paynow as described in [PAYNOW.md](PAYNOW.md); the merchant integration must be set up and verified before switching to live mode.
 
 ## 8. Daily operation
 - **Cashier:** *End-of-day report* shows takings by payment type and where they were sold, cash still to confirm, best sellers and low stock; print and sign it.

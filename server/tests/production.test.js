@@ -26,14 +26,14 @@ test('production refuses to start without strong secrets and https origin',()=>{
  assert.match(run({NODE_ENV:'production',SESSION_SECRET:'x'.repeat(40),RENDER_EXTERNAL_URL:'https://till.onrender.com'},code).stdout,/OK/);
  assert.match(run({STORE_TIMEZONE:'Mars/Base'},code).stdout,/not a valid time zone/);
 });
-test('simulated card payments are disabled in production unless explicitly allowed',()=>{
+test('cash-only is the default and simulated payments require explicit opt-in',()=>{
  const code="import('./src/payments.js').then(m=>console.log(m.enabledMethods().join(',')+'|'+m.getProvider().name))";
- assert.equal(run({},code).stdout.trim(),'cash,ecocash,card,bank|simulated');
+ assert.equal(run({},code).stdout.trim(),'cash|cash-only');
  assert.equal(run({NODE_ENV:'production'},code).stdout.trim(),'cash|cash-only');
- assert.equal(run({NODE_ENV:'production',ALLOW_SIMULATED_PAYMENTS:'true'},code).stdout.trim(),'cash,ecocash,card,bank|simulated');
+ assert.equal(run({NODE_ENV:'production',PAYMENT_PROVIDER:'simulated',ALLOW_SIMULATED_PAYMENTS:'true'},code).stdout.trim(),'cash,ecocash,card,bank|simulated');
  assert.match(run({PAYMENT_PROVIDER:'nope'},code).stderr,/Unknown PAYMENT_PROVIDER/);
 });
 test('declined simulated payments and cash outcomes',async()=>{
  const code="import('./src/payments.js').then(async m=>{const a=await m.authorizePayment({method:'card',demoOutcome:'declined'});const b=await m.authorizePayment({method:'cash'});const c=await m.authorizePayment({method:'card'});console.log([a.outcome,b.outcome,c.outcome,c.reference.startsWith('SIM-')].join())})";
- assert.equal(run({},code).stdout.trim(),'declined,pending,approved,true');
+ assert.equal(run({PAYMENT_PROVIDER:'simulated'},code).stdout.trim(),'declined,pending,approved,true');
 });

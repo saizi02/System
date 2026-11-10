@@ -10,13 +10,15 @@ import {pool,sql} from './db.js';
 import {HttpError,assert,tokenHash,publicStaff,PORTALS} from './helpers.js';
 import {getData} from './read.js';
 import {action,audit} from './actions.js';
-import {config,publicOrigin,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv} from './reports.js';
+import {config,publicOrigin,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv,inventoryInsights} from './reports.js';import {handleResult,sweep} from './paynowOrders.js';
 import {uploadProductPhoto} from './storage.js';
 const app=express();const production=process.env.NODE_ENV==='production';const PORT=Number(process.env.PORT||3001);
 validateConfig();
 if(production)app.set('trust proxy',1);
 app.disable('x-powered-by');app.use(helmet({contentSecurityPolicy:false}));app.use('/api',(req,res,next)=>{res.setHeader('Cache-Control','no-store');next()});
 // Content-Security-Policy for the built app (the Vite dev server is unaffected).
+// Paynow posts payment updates here (server to server, no browser). The signature is verified and Paynow is asked directly before any order changes.
+app.post('/api/payments/paynow/result',express.urlencoded({extended:false,limit:'20kb'}),async(req,res)=>{try{const r=await handleResult(req.body||{});res.status(r.ok?200:400).type('text/plain').send(r.ok?'OK':'Invalid')}catch(e){console.error(JSON.stringify({t:new Date().toISOString(),paynowResultError:e.message}));res.status(500).type('text/plain').send('Error')}});
 if(production)app.use(helmet.contentSecurityPolicy({useDefaults:false,directives:{defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],fontSrc:["'self'",'https://fonts.gstatic.com','data:'],imgSrc:["'self'",'data:','blob:','https:'],connectSrc:["'self'"],mediaSrc:["'self'",'blob:'],workerSrc:["'self'",'blob:'],manifestSrc:["'self'"],frameAncestors:["'none'"],baseUri:["'self'"],formAction:["'self'"],objectSrc:["'none'"]}}));
 // Rate limits per client IP (a shop's devices share one address, so reads are generous).
 app.use('/api/data',rateLimit({windowMs:60000,max:4000}));app.use('/api/actions',rateLimit({windowMs:60000,max:900}));app.use('/api/auth',rateLimit({windowMs:60000,max:60,message:'Too many sign-in requests. Please wait a minute.'}));app.use('/api/uploads',rateLimit({windowMs:60000,max:60}));
@@ -28,7 +30,7 @@ const clearCookie=()=>`${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0
 // In development, tablets on the same Wi-Fi (private IPv4 ranges) may call the API; production uses APP_ORIGIN only.
 const lanOrigin=/^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/;
 const allowedOrigins=(publicOrigin||'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://127.0.0.1:5174').split(',').map(x=>x.trim());
-app.use((req,res,next)=>{if(['POST','PUT','PATCH','DELETE'].includes(req.method)){const origin=req.get('origin');if(origin&&!allowedOrigins.includes(origin)&&!(!production&&lanOrigin.test(origin)))return res.status(403).json({error:'Request origin not allowed'});if(!origin&&production)return res.status(403).json({error:'Missing request origin'});}next()});
+app.use((req,res,next)=>{if(['POST','PUT','PATCH','DELETE'].includes(req.method)){const origin=req.get('origin');if(origin&&!allowedOrigins.includes(origin)&&!(!production&&lanOrigin.test(origin)))return res.status(403).json({error:'Request origin not allowed'});if(!origin&&production&&req.path!=='/api/payments/paynow/result')return res.status(403).json({error:'Missing request origin'});}next()});
 async function startSession(res,userId=null,guestId=randomUUID()){
  const token=randomBytes(48).toString('base64url');const ttl=userId?12*3600:7*24*3600;
  await sql('INSERT INTO sessions(token_hash,user_id,guest_id,expires_at) VALUES($1,$2,$3,now()+($4 * interval \u00271 second\u0027))',[tokenHash(token),userId,guestId,ttl]);res.setHeader('Set-Cookie',cookieHeader(token,ttl));return{guestId};
@@ -52,9 +54,10 @@ app.get('/api/config',async(req,res,next)=>{try{
   if(rows.length===1||config.storeId&&rows.length){const b=rows[0];const branches=(await sql('SELECT id,name FROM branches WHERE business_id=$1 AND active ORDER BY created_at',[b.id])).rows;store={...b,branches}}
  }
  const provider=getProvider();
- res.json({storeMode:config.storeMode,store,payments:{methods:enabledMethods(),simulated:provider.name==='simulated'},timezone:config.timezone,version:config.version})
+ res.json({storeMode:config.storeMode,store,payments:{methods:enabledMethods(),simulated:provider.name==='simulated',provider:provider.name,currency:provider.name==='paynow'?config.paynow.currency:null,testMode:provider.name==='paynow'&&config.paynow.mode==='test'},timezone:config.timezone,version:config.version})
 }catch(e){next(e)}});
 // Reports and exports (staff only; authorisation is checked per branch in reports.js).
+app.get('/api/reports/inventory-insights',async(req,res,next)=>{try{assert(req.staff&&!req.staff.disabled&&!req.staff.must_change_password,401,'Sign in required');res.json(await inventoryInsights(req.staff,req.query))}catch(e){next(e)}});
 app.get('/api/reports/closeout',async(req,res,next)=>{try{assert(req.staff&&!req.staff.disabled&&!req.staff.must_change_password,401,'Sign in required');res.json(await closeout(req.staff,req.query))}catch(e){next(e)}});
 const sendCsv=(name,fn)=>async(req,res,next)=>{try{assert(req.staff&&!req.staff.disabled&&!req.staff.must_change_password,401,'Sign in required');const body=await fn(req.staff,req.query);res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition',`attachment; filename="${name}-${new Date().toISOString().slice(0,10)}.csv"`);res.send(body)}catch(e){next(e)}};
 app.get('/api/export/sales.csv',sendCsv('sales',salesCsv));app.get('/api/export/stock.csv',sendCsv('stock',stockCsv));
@@ -100,5 +103,6 @@ if(existsSync(join(staticRoot,'index.html'))){
 app.use((req,res)=>res.status(404).json({error:'Not found'}));
 app.use((error,req,res,next)=>{const status=error instanceof HttpError?error.status:error.code==='23505'?409:error.code==='22P02'?400:error.code==='23503'?400:error instanceof multer.MulterError||error.message?.startsWith('Only JPEG')?400:500;const message=status===500?'Internal server error':error.code==='23505'?'That value already exists (for example, an account with this email)':error.message;console.error(`[${status}]`,error.message);res.status(status).json({error:message})});
 const server=app.listen(PORT,'0.0.0.0',()=>console.log(`Tillcore ready on port ${PORT} · mode=${config.storeMode} · payments=${getProvider().name}${config.production?'':' · development'}`));
+if(getProvider().name==='paynow')setInterval(()=>{void sweep().catch(()=>{})},30000).unref();
 setInterval(()=>{void sql('DELETE FROM sessions WHERE expires_at<now()').catch(()=>{})},3600000).unref();
 for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{console.log(`${sig}: shutting down`);server.close(()=>{void pool.end().finally(()=>process.exit(0))});setTimeout(()=>process.exit(1),10000).unref()});

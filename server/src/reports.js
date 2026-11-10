@@ -1,6 +1,6 @@
 import {sql} from './db.js';
 import {authorize,assert,HttpError} from './helpers.js';
-import {config} from './config.js';import {csv} from './csv.js';
+import {config} from './config.js';import {csv} from './csv.js';import {buildInsights} from './inventory.js';
 const isDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''));
 const uuid=v=>/^[0-9a-f-]{36}$/i.test(String(v||''));
 function scopeOf(q){assert(uuid(q.businessId)&&uuid(q.branchId),400,'businessId and branchId are required');return{businessId:q.businessId,branchId:q.branchId}}
@@ -41,4 +41,18 @@ export async function stockCsv(actor,q){
  const{businessId,branchId}=scopeOf(q);authorize(actor,['business_admin','super_admin'],businessId,branchId);
  const r=await sql(`SELECT p.name,p.category,p.barcode,p.price_cents,p.variants,p.active,i.variant_id,i.quantity,i.low_stock FROM inventory i JOIN products p ON p.id=i.product_id WHERE i.business_id=$1 AND i.branch_id=$2 ORDER BY p.name`,[businessId,branchId]);
  return csv(['Product','Category','Barcode','Variant','Price (USD)','In stock','Low-stock alert at','Status','Active'],r.rows.map(x=>[x.name,x.category,x.barcode,x.variants.find(v=>v.id===x.variant_id)?.name||x.variant_id,(x.price_cents/100).toFixed(2),x.quantity,x.low_stock,x.quantity<=x.low_stock?'LOW':'ok',x.active?'yes':'no']))
+}
+/** Smart inventory: days of stock left, reorder suggestions, slow movers and expiry warnings for one branch. */
+export async function inventoryInsights(actor,q){
+ const{businessId,branchId}=scopeOf(q);authorize(actor,['business_admin','super_admin'],businessId,branchId);
+ const r=await sql(`WITH sold AS (
+   SELECT i->>'productId' pid,i->>'variantId' vid,
+    COALESCE(sum(GREATEST(COALESCE(NULLIF(i->>'quantity','')::int,0),0)) FILTER (WHERE o.created_at>=now()-interval '14 days'),0)::int u14,
+    COALESCE(sum(GREATEST(COALESCE(NULLIF(i->>'quantity','')::int,0),0)),0)::int u30
+   FROM orders o CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(o.items)='array' THEN o.items ELSE '[]'::jsonb END) i
+   WHERE o.business_id=$1 AND o.branch_id=$2 AND o.status='paid' AND o.created_at>=now()-interval '30 days' GROUP BY 1,2)
+  SELECT i.product_id,i.variant_id,p.name,p.variants,i.quantity,i.low_stock,to_char(i.expiry_date,'YYYY-MM-DD') AS expiry,(i.expiry_date-CURRENT_DATE)::int AS expiry_days,COALESCE(s.u14,0) u14,COALESCE(s.u30,0) u30
+  FROM inventory i JOIN products p ON p.id=i.product_id LEFT JOIN sold s ON s.pid=i.product_id::text AND s.vid=i.variant_id
+  WHERE i.business_id=$1 AND i.branch_id=$2 AND p.active`,[businessId,branchId]);
+ return buildInsights(r.rows,q.coverDays);
 }

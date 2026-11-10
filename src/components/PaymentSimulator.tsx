@@ -3,6 +3,7 @@ import {
   ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Clock3, CreditCard,
   Landmark, LockKeyhole, MonitorCheck, ShieldCheck, Smartphone, Store, Wallet,
 } from 'lucide-react';
+import {isSimulated} from '../lib/config';
 import {money} from '../lib/types';
 import './PaymentSimulator.css';
 
@@ -57,8 +58,7 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
     if(locked || !online)return;
     setStage('processing');
     setLocalError('');
-    // Present a brief terminal-style processing state without simulating a real provider response.
-    await new Promise(resolve=>setTimeout(resolve,650));
+    if(isSimulated())await new Promise(resolve=>setTimeout(resolve,650));
     try {
       const completed=await onDecision(decision);
       if(!completed){
@@ -70,6 +70,38 @@ export default function PaymentSimulator({method,totalMinor,currency,storeName,b
       setStage(method==='cash'?'review':'awaiting');
     }
   };
+
+  if(!isSimulated()&&method==='cash')return <div className="payment-sim-overlay" role="presentation">
+    <section className="payment-sim-sheet" role="dialog" aria-modal="true" aria-labelledby="cash-checkout-heading">
+      <div className="payment-sim-top">
+        <span className="payment-sim-tag"><Store size={15}/> CASH AT CASHIER</span>
+        <button className="payment-sim-close" type="button" onClick={onClose} disabled={locked} aria-label="Close cash checkout">×</button>
+      </div>
+      <div className="payment-sim-layout">
+        <div className="payment-sim-left">
+          <div className="payment-sim-method-icon"><Wallet size={29}/></div>
+          <span className="payment-sim-eyebrow">CHECKOUT · CASH</span>
+          <h2 id="cash-checkout-heading">Pay at the cashier</h2>
+          <p className="payment-sim-subheading">Your order stays pending until the cashier confirms the cash received.</p>
+          <div className="payment-sim-amount">
+            <span>AMOUNT DUE</span>
+            <strong>{money(totalMinor,currency)}</strong>
+            <small><Store size={13}/>{storeName}</small>
+          </div>
+        </div>
+        <div className="payment-sim-right">
+          <div className="payment-sim-terminal-head"><Wallet size={20}/><span>CASH PAYMENT</span></div>
+          <div className="payment-sim-terminal-content">
+            <h3>Create your order</h3>
+            <p>Take your order number to the cashier. Stock is updated after cash is confirmed.</p>
+          </div>
+          <button className="btn btn-primary payment-sim-main-action" disabled={!online||locked} onClick={()=>void submit('approved')}>
+            Create cash order <ArrowRight size={18}/>
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>;
 
   return <div className="payment-sim-overlay" role="presentation">
     <section className="payment-sim-sheet" role="dialog" aria-modal="true" aria-labelledby="demo-payment-heading">

@@ -237,3 +237,19 @@ body.kiosk-device input,body.kiosk-device textarea{-webkit-user-select:text;user
 .report-sign{margin-top:28px;font-size:13px;color:#4b5b72}
 @media(max-width:700px){.report-cols{grid-template-columns:1fr}}
 @media print{.no-print{display:none!important}.day-report{box-shadow:none;border:0}.report-cols{grid-template-columns:1fr 1fr}}
+
+.stock-up{color:#157347}.stock-down{color:#b42318}.pill-reorder_soon,.pill-expiring_soon{background:#fff3d6;color:#8a5a00}.pill-expired,.pill-slow_mover{background:#eceff3;color:#4b5b72}.pill-expired{background:#fde4e1;color:#b42318}
+
+/* Paynow checkout sheet and waiting panel */
+.pn-overlay{position:fixed;inset:0;background:#0b1730b3;display:grid;place-items:center;z-index:90;padding:16px;overflow:auto}
+.pn-sheet{position:relative;background:#fff;color:#152946;border-radius:18px;width:100%;max-width:440px;padding:26px 24px;display:grid;gap:12px;box-shadow:0 30px 80px #0b173066}
+.pn-sheet h2{margin:0;font-size:24px}.pn-sheet p{margin:0}
+.pn-close{position:absolute;top:14px;right:14px;border:0;background:#eef3fa;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;color:#31476b}
+.pn-icon{width:52px;height:52px;border-radius:14px;background:#e8f0ff;color:#2365d9;display:grid;place-items:center}
+.pn-amount{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-radius:12px;background:#f4f7fb}
+.pn-amount span{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6b7a92}.pn-amount strong{font-size:22px}
+.pn-test{padding:10px 12px;border-radius:10px;background:#fff6dc;border:1px solid #f0d78c;color:#7a5800;font-size:13px}
+.pn-bad{color:#aa2338}.pn-spin{animation:pnspin 1s linear infinite}@keyframes pnspin{to{transform:rotate(360deg)}}
+.paynow-waiting strong{font-size:30px}.paynow-waiting .btn{margin-top:6px}
+.paynow-failed{background:#fff0f0;border-color:#f7bbbb;color:#aa2338}
+@media (prefers-reduced-motion:reduce){.pn-spin{animation:none}}

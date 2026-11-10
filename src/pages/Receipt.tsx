@@ -42,16 +42,28 @@ export default function Receipt() {
     );
   };
   useEffect(() => {
-    if (order?.source !== "kiosk") return;
+    if (order?.source !== "kiosk" || order.status === "awaiting_payment") return;
     const timer = setTimeout(() => {
       void finish();
     }, 90000);
     return () => clearTimeout(timer);
-  }, [order?.id, order?.source]);
+  }, [order?.id, order?.source, order?.status === "awaiting_payment"]);
+  // While a Paynow payment is pending, ask the server to confirm it with Paynow (it throttles this per order).
+  useEffect(() => {
+    if (order?.status !== "awaiting_payment") return;
+    const tick = () => void call("refreshPayment", { orderId }).catch(() => {});
+    tick();
+    const timer = setInterval(tick, 6000);
+    return () => clearInterval(timer);
+  }, [order?.status, orderId]);
   const prevStatus = useRef<string | undefined>(undefined);
   useEffect(() => {
     const st = order?.status;
-    if (prevStatus.current === "pending_cash" && st === "paid") {
+    if (
+      (prevStatus.current === "pending_cash" ||
+        prevStatus.current === "awaiting_payment") &&
+      st === "paid"
+    ) {
       try {
         navigator.vibrate?.([120, 60, 120]);
       } catch {
@@ -108,12 +120,20 @@ export default function Receipt() {
               <h1>
                 {order.status === "paid"
                   ? "Checkout complete"
-                  : "Awaiting cashier"}
+                  : order.status === "awaiting_payment"
+                    ? "Waiting for your payment"
+                    : order.status === "failed"
+                      ? "Payment not completed"
+                      : "Awaiting cashier"}
               </h1>
               <p>
                 {order.status === "paid"
                   ? "Your transaction was recorded successfully."
-                  : "Please show the order number to the cashier and pay in cash."}
+                  : order.status === "awaiting_payment"
+                    ? "Approve the payment to finish your order."
+                    : order.status === "failed"
+                      ? "The payment was cancelled, declined or timed out."
+                      : "Please show the order number to the cashier and pay in cash."}
               </p>
             </div>
             {order.status === "pending_cash" && (
@@ -133,6 +153,33 @@ export default function Receipt() {
                   {order.source === "kiosk"
                     ? "Pay at the cashier, then collect your receipt here."
                     : "Pay at the cashier. This page updates by itself the moment your payment is confirmed."}
+                </small>
+              </div>
+            )}
+            {order.status === "awaiting_payment" && (
+              <div className="cash-pending paynow-waiting" role="status">
+                <span>Paynow payment</span>
+                <strong>{money(order.totalMinor, order.currency)}</strong>
+                <small>
+                  {order.paymentInstructions ||
+                    "Waiting for your payment to be confirmed."}
+                </small>
+                {order.browserUrl && (
+                  <a className="btn btn-primary" href={order.browserUrl}>
+                    Open the Paynow payment page
+                  </a>
+                )}
+                <small>
+                  This page updates by itself as soon as Paynow confirms your
+                  payment. Please do not pay twice.
+                </small>
+              </div>
+            )}
+            {order.status === "failed" && (
+              <div className="cash-pending paynow-failed" role="alert">
+                <small>
+                  Nothing was charged and your items were released. Go back and
+                  try again, or pay with cash.
                 </small>
               </div>
             )}

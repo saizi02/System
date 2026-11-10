@@ -1,22 +1,19 @@
 import bcrypt from 'bcryptjs';
 import {randomBytes,createHash} from 'node:crypto';
 import {sql,transaction} from './db.js';
-import {config} from './config.js';import {authorizePayment} from './payments.js';
+import {config} from './config.js';import {authorizePayment} from './payments.js';import {beginPayment,refreshOrder} from './paynowOrders.js';import {businessDay,formatPayNumber} from './payNumber.js';
 import {HttpError,authorize,assert,required,integer,cartItems,options,tokenHash,ROLES,canManage,strongPassword,canAdvance,NEXT_FULFILLMENT} from './helpers.js';
 const profiles=['grocery','food','clothing'];const currencies=['USD','ZIG'];
 const one=async(q,p=[])=>(await sql(q,p)).rows[0];
+/** Tags the stock movement log for the rest of this transaction: why stock changed, which order/document, and who did it. */
+const tag=(c,reason,ref='',actor='')=>c.query("SELECT set_config('app.stock_reason',$1,true),set_config('app.stock_ref',$2,true),set_config('app.stock_actor',$3,true)",[reason,String(ref||''),String(actor||'')]);
+const isoDate=v=>{const d=v===undefined||v===null||v===''?null:String(v);assert(d===null||/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d)),400,'Invalid expiry date');return d};
 export const audit=async(b,id,action,details={})=>{await sql('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[b||null,id||null,action,JSON.stringify(details)])};
 const CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newPairingCode=()=>{const b=randomBytes(8);return Array.from(b,x=>CODE_ALPHABET[x%CODE_ALPHABET.length]).join('')};
 const normalizeCode=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const codeHash=v=>createHash('sha256').update('kiosk-pair:'+normalizeCode(v)).digest('hex');
 const prettyCode=c=>`${c.slice(0,4)}-${c.slice(4)}`;
-const businessDay=(date=new Date())=>{
- const parts=new Intl.DateTimeFormat('en-CA',{timeZone:config.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
- const value=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
- return `${value.year}-${value.month}-${value.day}`;
-};
-const formatPayNumber=n=>String(n).padStart(4,'0');
 // Pairing is a public endpoint, so guess attempts are throttled per IP (10 / 15 min).
 const pairAttempts=new Map();
 const pairBlocked=ip=>{const a=pairAttempts.get(ip);const now=Date.now();if(!a||now-a.first>15*60000){pairAttempts.delete(ip);return false}return a.count>=10};
@@ -72,7 +69,14 @@ export async function action(name,input,req){
  case 'setStock':{
   const{businessId,branchId}=scope(input);authorize(actor,['super_admin','business_admin'],businessId,branchId);const productId=required(input.productId,'product ID'),variantId=required(input.variantId,'variant ID');const qty=integer(input.quantity,'quantity',0,1e6),low=integer(input.lowStock??5,'lowStock',0,999999);
   const product=await one('SELECT variants FROM products WHERE id=$1 AND business_id=$2',[productId,businessId]);assert(product&&product.variants.some(v=>v.id===variantId),400,'Product or variant not found');const br=await one('SELECT id FROM branches WHERE id=$1 AND business_id=$2',[branchId,businessId]);assert(br,404,'Branch not found');
-  await sql('INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity,low_stock) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=EXCLUDED.quantity,low_stock=EXCLUDED.low_stock,updated_at=now()',[businessId,branchId,productId,variantId,qty,low]);await audit(businessId,actor.id,'stock.set',{productId,variantId,qty});return{ok:true};
+  const withExpiry='expiryDate' in input,expiry=isoDate(input.expiryDate);
+  await transaction(async c=>{await tag(c,'adjustment','',actor.id);await c.query('INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity,low_stock,expiry_date) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=EXCLUDED.quantity,low_stock=EXCLUDED.low_stock,expiry_date=CASE WHEN $8::boolean THEN EXCLUDED.expiry_date ELSE inventory.expiry_date END,updated_at=now()',[businessId,branchId,productId,variantId,qty,low,withExpiry?expiry:null,withExpiry])});await audit(businessId,actor.id,'stock.set',{productId,variantId,qty});return{ok:true};
+ }
+ case 'receiveStock':{
+  const{businessId,branchId}=scope(input);authorize(actor,['super_admin','business_admin'],businessId,branchId);const productId=required(input.productId,'product ID'),variantId=required(input.variantId,'variant ID');const add=integer(input.quantity,'quantity',1,1e6);const withExpiry='expiryDate' in input,expiry=isoDate(input.expiryDate);
+  const product=await one('SELECT variants FROM products WHERE id=$1 AND business_id=$2',[productId,businessId]);assert(product&&product.variants.some(v=>v.id===variantId),400,'Product or variant not found');const br=await one('SELECT id FROM branches WHERE id=$1 AND business_id=$2',[branchId,businessId]);assert(br,404,'Branch not found');
+  const row=await transaction(async c=>{await tag(c,'restock',String(input.reference||'').slice(0,80),actor.id);return(await c.query('INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity,expiry_date) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity,expiry_date=CASE WHEN $7::boolean THEN EXCLUDED.expiry_date ELSE inventory.expiry_date END,updated_at=now() RETURNING quantity',[businessId,branchId,productId,variantId,add,withExpiry?expiry:null,withExpiry])).rows[0]});
+  await audit(businessId,actor.id,'stock.received',{productId,variantId,added:add});return{ok:true,quantity:row.quantity};
  }
   case 'upsertSupplier':{
    const businessId=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],businessId);
@@ -100,6 +104,7 @@ export async function action(name,input,req){
    const businessId=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],businessId);
    const purchaseOrderId=required(input.purchaseOrderId,'purchaseOrderId');await transaction(async c=>{
     const po=(await c.query("SELECT * FROM purchase_orders WHERE id=$1 AND business_id=$2 AND status IN ('draft','ordered') LIMIT 1",[purchaseOrderId,businessId])).rows[0];assert(po,404,'Purchase order is not available to receive');
+    await tag(c,'restock',purchaseOrderId,actor.id);
     for(const line of po.lines){assert(Number.isSafeInteger(line.quantity)&&line.quantity>0,409,'Invalid purchase order line');
      await c.query("INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity,low_stock) VALUES($1,$2,$3,$4,$5,5) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity,updated_at=now()",[businessId,po.branch_id,line.productId,line.variantId,line.quantity]);
     }
@@ -194,23 +199,23 @@ export async function action(name,input,req){
   return{paired:true,enabled:k.enabled,kiosk:{id:k.id,name:k.name,businessId:k.business_id,branchId:k.branch_id,profile:k.profile}};
  }
  case 'checkout':{
-  const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','card','bank'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['cashier'],businessId,branchId);
+  const{businessId,branchId}=scope(input);const items=cartItems(input.items);assert(['cash','ecocash','onemoney','card','bank'].includes(input.method),400,'Invalid method');assert(['mobile','kiosk','pos'].includes(input.source),400,'Invalid source');if(input.source==='pos')authorize(actor,['cashier'],businessId,branchId);
   const currency=input.currency||'USD';assert(currencies.includes(currency),400,'Invalid currency');const key=required(input.idempotencyKey,'checkout key',100);assert(/^[a-zA-Z0-9-]{10,100}$/.test(key),400,'Invalid idempotency key');
   // Lock the customer's session row: ensures identical keys never create multiple orders on concurrent retries.
-  return transaction(async c=>{
+  const placed=await transaction(async c=>{
    await c.query('SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))',[guestId,key]);
-   const previous=(await c.query('SELECT id,status,total_cents,pay_number FROM orders WHERE customer_uid=$1 AND idempotency_key=$2',[guestId,key])).rows[0];if(previous)return{orderId:previous.id,status:previous.status,totalCents:previous.total_cents,payNumber:previous.pay_number};
+   const previous=(await c.query('SELECT id,status,total_cents,pay_number,browser_url,payment_instructions FROM orders WHERE customer_uid=$1 AND idempotency_key=$2',[guestId,key])).rows[0];if(previous)return{orderId:previous.id,status:previous.status,totalCents:previous.total_cents,payNumber:previous.pay_number,browserUrl:previous.browser_url||null,instructions:previous.payment_instructions||null};
    let device=null;if(input.source==='kiosk'&&typeof input.deviceToken==='string'&&input.deviceToken){device=(await c.query('SELECT id,name,enabled,business_id,branch_id FROM kiosk_devices WHERE token_hash=$1',[tokenHash(input.deviceToken)])).rows[0]||null;assert(device&&device.business_id===businessId&&device.branch_id===branchId,403,'This kiosk is no longer paired. Ask an admin to pair it again.');assert(device.enabled,409,'This kiosk is temporarily out of service');}
    const b=(await c.query('SELECT * FROM businesses WHERE id=$1',[businessId])).rows[0];const br=(await c.query('SELECT * FROM branches WHERE id=$1 AND business_id=$2',[branchId,businessId])).rows[0];assert(b?.status==='active'&&br?.active,409,'Shop not active');const rate=Number(b.rates[currency]||0);assert(Number.isFinite(rate)&&rate>0,409,'Currency rate missing');
    const sorted=[...items].sort((a,b)=>(a.productId+a.variantId).localeCompare(b.productId+b.variantId));const lines=[];
    for(const i of sorted){
     const p=(await c.query('SELECT name,price_cents,variants,active FROM products WHERE id=$1 AND business_id=$2',[i.productId,businessId])).rows[0];assert(p?.active,409,'Product unavailable');const variant=p.variants.find(v=>v.id===i.variantId);assert(variant,400,'Invalid variant');
-    const stock=(await c.query('SELECT quantity FROM inventory WHERE business_id=$1 AND branch_id=$2 AND product_id=$3 AND variant_id=$4 FOR UPDATE',[businessId,branchId,i.productId,i.variantId])).rows[0];assert(stock?.quantity>=i.quantity,409,`${p.name} is out of stock`);
+    const stock=(await c.query('SELECT quantity,(expiry_date IS NOT NULL AND expiry_date<CURRENT_DATE) AS expired FROM inventory WHERE business_id=$1 AND branch_id=$2 AND product_id=$3 AND variant_id=$4 FOR UPDATE',[businessId,branchId,i.productId,i.variantId])).rows[0];assert(stock?.quantity>=i.quantity,409,`${p.name} is out of stock`);assert(!stock.expired,409,`${p.name} is past its expiry date and cannot be sold`);
     const unitCents=p.price_cents+(Number.isSafeInteger(variant.surchargeCents)?variant.surchargeCents:0);
     lines.push({productId:i.productId,variantId:i.variantId,name:p.name,variantName:variant.name,quantity:i.quantity,unitCents,lineCents:unitCents*i.quantity});
    }
-   const totalCents=lines.reduce((sum,l)=>sum+l.lineCents,0);assert(totalCents<=1e9,400,'Order too large');const totalMinor=Math.round(totalCents*rate);const pay=await authorizePayment({method:input.method,amountMinor:totalMinor,currency,orderRef:key,demoOutcome:input.demoOutcome});const extra=options(b.profile,input.method,input,pay.outcome);const status=extra.paymentOutcome==='pending'?'pending_cash':extra.paymentOutcome==='declined'?'failed':'paid';
-   if(status==='paid')for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);
+   const totalCents=lines.reduce((sum,l)=>sum+l.lineCents,0);assert(totalCents<=1e9,400,'Order too large');const totalMinor=Math.round(totalCents*rate);const pay=await authorizePayment({method:input.method,amountMinor:totalMinor,currency,orderRef:key,demoOutcome:input.demoOutcome,phone:input.phone});const extra=options(b.profile,input.method,input,pay.outcome);const status=extra.paymentOutcome==='pending'?'pending_cash':extra.paymentOutcome==='awaiting'?'awaiting_payment':extra.paymentOutcome==='declined'?'failed':'paid';
+   if(status==='paid'||status==='awaiting_payment')for(const i of (await tag(c,'sale',key,''),sorted))await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);
    let payNumber=null,payDay=null;
    if(status==='paid'||status==='pending_cash'){
     payDay=businessDay();
@@ -222,8 +227,15 @@ export async function action(name,input,req){
     payNumber=formatPayNumber(counter.last_number);
    }
    const row=(await c.query('INSERT INTO orders(business_id,branch_id,customer_uid,idempotency_key,items,total_cents,currency,rate,total_minor,method,payment_outcome,service_type,order_note,status,source,kiosk_device_id,kiosk_name,payment_reference,pay_number,pay_day) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id',[businessId,branchId,guestId,key,JSON.stringify(lines),totalCents,currency,rate,totalMinor,input.method,extra.paymentOutcome,extra.serviceType,extra.orderNote,status,input.source,device?.id||null,device?.name||null,pay.reference||null,payNumber,payDay])).rows[0];
-   return{orderId:row.id,status,totalCents,payNumber};
+   return{orderId:row.id,status,totalCents,payNumber,startPaynow:status==='awaiting_payment'};
   });
+  if(placed.startPaynow){const{startPaynow:_flag,...rest}=placed;return{...rest,...await beginPayment(rest,{method:input.method,phone:input.phone})}}
+  return placed;
+ }
+ case 'refreshPayment':{
+  const orderId=required(input.orderId,'order ID');const o=await one('SELECT customer_uid,business_id FROM orders WHERE id=$1',[orderId]);
+  assert(o&&(o.customer_uid===guestId||(actor&&(actor.role==='super_admin'||actor.business_id===o.business_id))),404,'Order not found');
+  return{status:await refreshOrder(orderId)};
  }
  case 'confirmCash':case 'cancelCash':{
   const{businessId,branchId}=scope(input);authorize(actor,['cashier'],businessId,branchId);const orderId=required(input.orderId,'order ID');return transaction(async c=>{
@@ -236,7 +248,7 @@ export async function action(name,input,req){
    }
    if(name==='confirmCash'){
     const sorted=[...order.items].sort((a,b)=>(a.productId+a.variantId).localeCompare(b.productId+b.variantId));for(const i of sorted){const r=(await c.query('SELECT quantity FROM inventory WHERE business_id=$1 AND branch_id=$2 AND product_id=$3 AND variant_id=$4 FOR UPDATE',[businessId,branchId,i.productId,i.variantId])).rows[0];assert(r?.quantity>=i.quantity,409,`${i.name} out of stock`)}
-    for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);
+    await tag(c,'sale',orderId,actor.id);for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity-$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,businessId,branchId,i.productId,i.variantId]);
    }
     await c.query('UPDATE orders SET status=$1,handled_by=$2,updated_at=now() WHERE id=$3',[name==='confirmCash'?'paid':'cancelled',actor.id,orderId]);await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,$2,$3,$4)',[businessId,actor.id,name==='confirmCash'?'order.cash_confirmed':'order.cash_cancelled',JSON.stringify({orderId,tenderedMinor,changeMinor})]);return{ok:true};
   });
@@ -249,6 +261,7 @@ export async function action(name,input,req){
     const order=(await c.query('SELECT * FROM orders WHERE id=$1 AND business_id=$2 AND branch_id=$3 FOR UPDATE',[orderId,businessId,branchId])).rows[0];
     assert(order,404,'Order not found');
     assert(order.status==='paid'||(name==='voidOrder'&&order.status==='pending_cash'),409,'Only a paid sale or pending cash sale can be reversed');
+    await tag(c,reversal==='refunded'?'refund':'void',orderId,actor.id);
     for(const item of order.items.filter(()=>order.status==='paid')){
      await c.query('INSERT INTO inventory(business_id,branch_id,product_id,variant_id,quantity) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_id,branch_id,product_id,variant_id) DO UPDATE SET quantity=inventory.quantity+$5::int,updated_at=now()',[businessId,branchId,item.productId,item.variantId,item.quantity]);
     }

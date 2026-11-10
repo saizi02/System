@@ -20,4 +20,17 @@ services:
       - key: BOOTSTRAP_CHIZZYBOI_STORE
         value: true
       - key: ALLOW_SIMULATED_PAYMENTS
-        value: true
+        value: false
+      # Real payments: enter the three secrets in the Render dashboard (they are never stored in this file).
+      - key: PAYMENT_PROVIDER
+        value: paynow
+      - key: PAYNOW_INTEGRATION_ID
+        sync: false
+      - key: PAYNOW_INTEGRATION_KEY
+        sync: false
+      - key: PAYNOW_AUTH_EMAIL
+        sync: false
+      - key: PAYNOW_MODE
+        value: test
+      - key: PAYNOW_CURRENCY
+        value: USD

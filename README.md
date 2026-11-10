@@ -9,8 +9,8 @@ A self-service checkout web app for grocery, fast-food and fashion outlets. It c
 - Customer: mobile camera barcode scanning, hardware barcode scanner on the kiosk (see docs/BARCODE-SCANNER.md), searchable touch-kiosk catalogue, carts, receipts.
 - Cashier station: cash approval, order handover, clothing pickup, grocery receipt exit checking.
 - Kitchen display (Food stores): live New → Preparing → Ready board with timers and optional sound alert; the Cashier is notified when an order is ready.
-- Checkout: server-side prices, inventory transactions, one-time order keys, stock deduction only when payment has demo approval / cashier cash confirmation.
-- Payments: **academic simulations only** (EcoCash-style / virtual card approval or decline; cash is confirmed by Cashier). They look realistic but **do not transfer money** or ask for real card credentials.
+- Checkout: server-side prices, inventory transactions, one-time order keys, and stock reservation/release for online payments.
+- Payments: **Paynow Zimbabwe** supports EcoCash, OneMoney and card payments; cash is confirmed by the Cashier. Configure merchant credentials and test mode as described in [docs/PAYNOW.md](docs/PAYNOW.md). With no provider configured, the system is cash-only; demo approvals are not enabled by default.
 - Receipts: digital receipt plus browser printing with thermal 80 mm print CSS.
 - Currency: USD and ZiG using per-store rate snapshots.
 
@@ -69,7 +69,7 @@ Customer PWA / touch-kiosk  ·  Cashier station  ·  Kitchen display  ·  Admin 
 
 Backend validation unit tests can run with `npm test` after installation. The application still needs **local npm dependency installation, an actual PostgreSQL database, a successful production build and hands-on end-to-end tests**. A source archive is not proof of complete production readiness.
 
-Offline browsing and draft cart persistence are supported where cached; offline checkout is **intentionally disabled** to prevent incorrect stock or duplicate transactions. Live data updates use 3-second polling, not push sockets. Receipt printing opens the normal browser print dialog; hardware-specific silent printer control is not included. Real payment gateway integrations are **not** included.
+Offline browsing and draft cart persistence are supported where cached; offline checkout is **intentionally disabled** to prevent incorrect stock or duplicate transactions. Live data updates use 3-second polling, not push sockets. Receipt printing opens the normal browser print dialog; hardware-specific silent printer control is not included. Live payments require an approved Paynow merchant integration and credentials; the app defaults to Paynow test mode only when configured.
 
 See [docs/ACCEPTANCE-CHECKLIST.md](docs/ACCEPTANCE-CHECKLIST.md) for functional checks before demonstration.
 

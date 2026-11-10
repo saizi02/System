@@ -11,7 +11,9 @@ export const config={
  timezone:env.STORE_TIMEZONE||'Africa/Harare',
  /** Admin consoles sign out after this many minutes without an action. Cashier and Kitchen stations stay signed in for the shift. */
  adminIdleMinutes:Number(env.ADMIN_IDLE_MINUTES||30),
- paymentProvider:env.PAYMENT_PROVIDER||'simulated',
+ paymentProvider:env.PAYMENT_PROVIDER||'cash-only',
+ /** Paynow Zimbabwe (PAYMENT_PROVIDER=paynow). 'test' lets the merchant account fake payments; 'live' moves real money. */
+ paynow:{id:env.PAYNOW_INTEGRATION_ID||'',key:env.PAYNOW_INTEGRATION_KEY||'',authEmail:env.PAYNOW_AUTH_EMAIL||'',mode:env.PAYNOW_MODE==='live'?'live':'test',currency:(env.PAYNOW_CURRENCY||'USD').toUpperCase(),expiryMinutes:Number(env.PAYNOW_EXPIRY_MINUTES||10)},
  /** In production, simulated card / mobile-money approvals are OFF unless explicitly allowed (they approve any payment). */
  allowSimulatedPayments:!production||env.ALLOW_SIMULATED_PAYMENTS==='true',
  staticDir:env.STATIC_DIR||'../dist',
@@ -27,5 +29,14 @@ export function validateConfig(){
  if(config.storeId&&!/^[0-9a-f-]{36}$/i.test(config.storeId))problems.push('STORE_ID must be a store UUID');
  try{new Intl.DateTimeFormat('en',{timeZone:config.timezone})}catch{problems.push(`STORE_TIMEZONE "${config.timezone}" is not a valid time zone (example: Africa/Harare)`)}
  if(!(config.adminIdleMinutes>=5&&config.adminIdleMinutes<=1440))problems.push('ADMIN_IDLE_MINUTES must be between 5 and 1440');
+ if(config.paymentProvider==='paynow'){
+  const p=config.paynow;
+  if(!/^\d+$/.test(p.id))problems.push('PAYNOW_INTEGRATION_ID must be the numeric Integration ID from your Paynow account');
+  if(p.key.length<10)problems.push('PAYNOW_INTEGRATION_KEY is missing (copy it from your Paynow integration settings)');
+  if(!/^[^@\s]+@[^@\s]+$/.test(p.authEmail))problems.push('PAYNOW_AUTH_EMAIL must be the email you sign in to Paynow with');
+  if(!['USD','ZIG'].includes(p.currency))problems.push('PAYNOW_CURRENCY must be USD or ZIG (the currency of your Paynow integration)');
+  if(!(p.expiryMinutes>=3&&p.expiryMinutes<=60))problems.push('PAYNOW_EXPIRY_MINUTES must be between 3 and 60');
+  if(production&&p.mode==='test')console.warn('WARNING: PAYNOW_MODE is test. Set PAYNOW_MODE=live to accept real money.');
+ }
  if(problems.length)throw Error('Configuration problems:\n - '+problems.join('\n - '));
 }
