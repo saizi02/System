@@ -4,7 +4,7 @@ import {HttpError} from './helpers.js';
 /** Paynow Zimbabwe client. Every message is signed with SHA-512 over the field values (in message order) plus the integration key.
  *  Docs: https://developers.paynow.co.zw/docs/ . The integration key never leaves the server. */
 const BASE='https://www.paynow.co.zw';
-export const makeHash=(values,key)=>createHash('sha512').update(values.join('')+key,'utf8').digest('hex').toUpperCase();
+export const makeHash=(values,key)=>createHash('sha512').update(values.join('')+key.toLowerCase(),'utf8').digest('hex').toUpperCase();
 const safeEqual=(a,b)=>{const x=Buffer.from(String(a).toUpperCase()),y=Buffer.from(String(b).toUpperCase());return x.length===y.length&&timingSafeEqual(x,y)};
 /** Parse a URL-encoded Paynow message. Returns the lower-cased fields and whether the hash is valid for `key`. */
 export function parseMessage(source,key){
@@ -31,7 +31,10 @@ const trustedPollUrl=u=>{try{const x=new URL(u);return x.protocol==='https:'&&(x
 export const isTrustedPollUrl=trustedPollUrl;
 export function createClient({id=config.paynow.id,key=config.paynow.key,authEmail=config.paynow.authEmail,mode=config.paynow.mode,fetchImpl=globalThis.fetch,base=BASE,timeoutMs=15000}={}){
  const send=async(url,fields)=>{
-  const body=fields?new URLSearchParams({...fields,hash:makeHash(Object.values(fields).map(String),key)}).toString():'';
+  const body=fields?(()=>{
+   const encoded=Object.fromEntries(Object.entries(fields).map(([name,value])=>[name,encodeURI(String(value))]));
+   return new URLSearchParams({...encoded,hash:makeHash(Object.values(encoded),key)}).toString()
+  })():'';
   let res,text;
   try{res=await fetchImpl(url,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body,signal:AbortSignal.timeout(timeoutMs)});text=await res.text()}
   catch{throw new HttpError(502,'The payment service could not be reached. Please try again in a moment.')}
@@ -41,11 +44,11 @@ export function createClient({id=config.paynow.id,key=config.paynow.key,authEmai
   if(!msg.valid)throw new HttpError(502,'The payment service returned an invalid response. Nothing was charged.');
   return msg.fields;
  };
- const common=r=>({id,reference:r.reference,amount:Number(r.amountMinor/100).toFixed(2),additionalinfo:r.info||'',returnurl:r.returnUrl,resulturl:r.resultUrl});
+ const common=r=>({resulturl:r.resultUrl,returnurl:r.returnUrl,reference:r.reference,amount:Number(r.amountMinor/100).toFixed(2),id,additionalinfo:r.info||''});
  return{
   /** Card, Zimswitch and everything else: the customer is redirected to Paynow's page (browserUrl). */
   async initiate(r){
-   const f={...common(r),...(mode==='test'?{authemail:authEmail}:{}),status:'Message'};
+   const f={...common(r),authemail:mode==='test'?authEmail:'',status:'Message'};
    const out=await send(`${base}/interface/initiatetransaction`,f);
    if(!out.browserurl||!out.pollurl)throw new HttpError(502,'Paynow did not return a payment page.');
    return{browserUrl:out.browserurl,pollUrl:out.pollurl};

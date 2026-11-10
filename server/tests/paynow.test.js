@@ -8,6 +8,7 @@ const fakeFetch=(handler)=>async(url,init)=>{const r=handler(url,init);return{ok
 test("hash matches the example in Paynow's own documentation",()=>{
  const concatenated='Okhttps://staging.paynow.co.zw/Payment/ConfirmPayment/9510https://staging.paynow.co.zw/Interface/CheckPayment/?guid=c7ed41da-0159-46da-b428-69549f7704139510';
  assert.equal(makeHash([concatenated],KEY),'750DD0B0DF374678707BB5AF915AF81C228B9058AD57BB7120569EC68BBB9C2EFC1B26C6375D2BC562AC909B3CD6B2AF1D42E1A5E479FFAC8F4FB3FDCE71DF4D');
+ assert.equal(makeHash([concatenated],KEY.toUpperCase()),makeHash([concatenated],KEY));
 });
 test('parseMessage accepts a correct signature and rejects a tampered one',()=>{
  const good=signed({status:'Paid',reference:'abc',amount:'5.00',paynowreference:'123'});
@@ -51,15 +52,17 @@ test('mobile payment sends a signed request with the right fields and reads the 
  const r=await client.initiateMobile({...order,phone:'0771111111',method:'ecocash'});
  assert.equal(sent.url,'https://www.paynow.co.zw/interface/remotetransaction');
  assert.equal(sent.params.get('amount'),'12.50');assert.equal(sent.params.get('id'),'1234');assert.equal(sent.params.get('method'),'ecocash');assert.equal(sent.params.get('phone'),'0771111111');assert.equal(sent.params.get('authemail'),'me@shop.co.zw');assert.equal(sent.params.get('status'),'Message');
+ assert.deepEqual([...sent.params.keys()],['resulturl','returnurl','reference','amount','id','additionalinfo','authemail','phone','method','status','hash']);
+ assert.equal(sent.params.get('additionalinfo'),'Till%20payment');
  const entries=[...sent.params].filter(([k])=>k!=='hash');
  assert.equal(sent.params.get('hash'),makeHash(entries.map(([,v])=>v),KEY));
  assert.equal(r.pollUrl,'https://www.paynow.co.zw/Interface/CheckPayment/?guid=abc');assert.match(r.instructions,/approve/);
 });
-test('card payment returns the Paynow page address; live mode sends no merchant email',async()=>{
+test('card payment returns the Paynow page address; live mode sends an empty merchant email',async()=>{
  let params;
  const client=createClient({id:'1234',key:KEY,authEmail:'me@shop.co.zw',mode:'live',fetchImpl:fakeFetch((url,init)=>{params=new URLSearchParams(init.body);return{body:signed({status:'Ok',browserurl:'https://www.paynow.co.zw/Payment/ConfirmPayment/9',pollurl:'https://www.paynow.co.zw/Interface/CheckPayment/?guid=z'})}})});
  const r=await client.initiate(order);
- assert.equal(r.browserUrl,'https://www.paynow.co.zw/Payment/ConfirmPayment/9');assert.equal(params.has('authemail'),false);
+ assert.equal(r.browserUrl,'https://www.paynow.co.zw/Payment/ConfirmPayment/9');assert.equal(params.get('authemail'),'');
 });
 test('a Paynow error, a bad signature and an unreachable service all stop the payment',async()=>{
  const mk=h=>createClient({id:'1',key:KEY,authEmail:'a@b.co',fetchImpl:fakeFetch(h)});

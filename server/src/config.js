@@ -13,7 +13,7 @@ export const config={
  adminIdleMinutes:Number(env.ADMIN_IDLE_MINUTES||30),
  paymentProvider:env.PAYMENT_PROVIDER||'cash-only',
  /** Paynow Zimbabwe (PAYMENT_PROVIDER=paynow). 'test' lets the merchant account fake payments; 'live' moves real money. */
- paynow:{id:env.PAYNOW_INTEGRATION_ID||'',key:env.PAYNOW_INTEGRATION_KEY||'',authEmail:env.PAYNOW_AUTH_EMAIL||'',mode:env.PAYNOW_MODE==='live'?'live':'test',currency:(env.PAYNOW_CURRENCY||'USD').toUpperCase(),expiryMinutes:Number(env.PAYNOW_EXPIRY_MINUTES||10)},
+ paynow:{id:env.PAYNOW_INTEGRATION_ID?.trim()||'',key:env.PAYNOW_INTEGRATION_KEY?.trim()||'',authEmail:env.PAYNOW_AUTH_EMAIL?.trim()||'',mode:env.PAYNOW_MODE==='live'?'live':'test',currency:(env.PAYNOW_CURRENCY||'USD').trim().toUpperCase(),expiryMinutes:Number(env.PAYNOW_EXPIRY_MINUTES||10)},
  /** In production, simulated card / mobile-money approvals are OFF unless explicitly allowed (they approve any payment). */
  allowSimulatedPayments:!production||env.ALLOW_SIMULATED_PAYMENTS==='true',
  staticDir:env.STATIC_DIR||'../dist',
