@@ -26,6 +26,7 @@ export async function beginPayment({orderId},{method,phone}){
   await sql('UPDATE orders SET poll_url=$2,browser_url=$3,payment_instructions=$4,payment_phone=$5,payment_expires_at=$6,payment_simulated=false,updated_at=now() WHERE id=$1',[o.id,r.pollUrl,r.browserUrl||null,r.instructions||null,masked,expires]);
   return{browserUrl:r.browserUrl||null,instructions:r.instructions||null};
  }catch(e){
+  console.error(JSON.stringify({t:new Date().toISOString(),paynowStartError:e.message,orderId:o.id,method}));
   await settle(o.id,'failed');
   throw e instanceof HttpError?e:new HttpError(502,'The payment could not be started. Nothing was charged.');
  }
@@ -50,7 +51,8 @@ export async function settle(orderId,verdict,{amount=null,paynowReference=null}=
   const sorted=[...o.items].sort((a,b)=>(a.productId+a.variantId).localeCompare(b.productId+b.variantId));
   await tag(c,'payment_failed',orderId);
   for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity+$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,o.business_id,o.branch_id,i.productId,i.variantId]);
-  await c.query("UPDATE orders SET status='failed',payment_outcome='declined',payment_checked_at=now(),updated_at=now() WHERE id=$1",[orderId]);
+  // Release the idempotency key so the customer can retry instead of being returned this failed order.
+  await c.query("UPDATE orders SET status='failed',payment_outcome='declined',idempotency_key=idempotency_key||':failed:'||id::text,payment_checked_at=now(),updated_at=now() WHERE id=$1",[orderId]);
   await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,NULL,$2,$3)',[o.business_id,'payment.paynow_failed',JSON.stringify({orderId,method:o.method})]);
   return{changed:true,status:'failed'};
  });
