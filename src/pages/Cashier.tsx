@@ -148,6 +148,7 @@ export default function Cashier() {
   const paid = orders.filter((o) => o.status === "paid");
   const queue = paid.filter((o) => o.fulfillment !== "collected");
   const isFood = store?.profile === "food";
+  const isGrocery = store?.profile === "grocery";
   const readyForHandover = queue.filter((o) => o.fulfillment === "ready");
   const inKitchen = queue.filter(
     (o) => o.fulfillment === "new" || o.fulfillment === "preparing",
@@ -210,13 +211,12 @@ export default function Cashier() {
     setError("");
     setSuccess("");
   };
-  const menuItems: Section[] = [
-    "overview",
-    "cash",
-    "collection",
-    "history",
-    "closeout",
-  ];
+  useEffect(() => {
+    if (isGrocery && view === "collection") setView("overview");
+  }, [isGrocery, view]);
+  const menuItems: Section[] = isGrocery
+    ? ["overview", "cash", "history", "closeout"]
+    : ["overview", "cash", "collection", "history", "closeout"];
   const nextState: Record<string, "preparing" | "ready" | "collected"> = {
     new: "preparing",
     preparing: "ready",
@@ -292,7 +292,11 @@ export default function Cashier() {
           <PageTitle
             eyebrow="STORE CHECKOUT OPERATIONS"
             title={sectionNames[view]}
-            description="Confirm cash payments, assist shoppers and hand over completed orders."
+            description={
+              isGrocery
+                ? "Confirm cash payments and assist shoppers at checkout."
+                : "Confirm cash payments, assist shoppers and hand over completed orders."
+            }
           />
           {(error || orderErr || allErr || ownErr) && (
             <p className="error" role="alert">
@@ -361,21 +365,27 @@ export default function Cashier() {
             <>
               {view === "overview" && (
                 <>
-                  <div className="metrics-grid metrics-5">
+                  <div
+                    className={`metrics-grid ${isGrocery ? "metrics-3" : "metrics-5"}`}
+                  >
                     <Stat label="Pending cash" value={pending.length} />
                     <Stat label="Paid checkouts" value={paid.length} />
                     <Stat
                       label="Recorded total"
                       value={money(paid.reduce((n, o) => n + o.totalCents, 0))}
                     />
-                    <Stat
-                      label={isFood ? "In kitchen" : "To prepare"}
-                      value={inKitchen.length}
-                    />
-                    <Stat
-                      label="Ready for handover"
-                      value={readyForHandover.length}
-                    />
+                    {!isGrocery && (
+                      <>
+                        <Stat
+                          label={isFood ? "In kitchen" : "To prepare"}
+                          value={inKitchen.length}
+                        />
+                        <Stat
+                          label="Ready for handover"
+                          value={readyForHandover.length}
+                        />
+                      </>
+                    )}
                   </div>
                   <KioskOverview storeId={storeId} />
                   <section className="panel">
@@ -400,31 +410,23 @@ export default function Cashier() {
                           Open queue
                         </button>
                       </article>
-                      <article>
-                        <QrCode />
-                        <h3>
-                          {store?.profile === "grocery"
-                            ? "Verify exit"
-                            : "Order handover"}
-                        </h3>
-                        <p>
-                          {store?.profile === "grocery"
-                            ? "Hand over collected grocery orders."
-                            : isFood
+                      {!isGrocery && (
+                        <article>
+                          <QrCode />
+                          <h3>Order handover</h3>
+                          <p>
+                            {isFood
                               ? "Hand over orders the kitchen has marked ready."
                               : "Prepare and hand over fashion orders."}
-                        </p>
-                        <button
-                          className="btn btn-outline"
-                          onClick={() =>
-                            change(
-                              "collection",
-                            )
-                          }
-                        >
-                          Open
-                        </button>
-                      </article>
+                          </p>
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => change("collection")}
+                          >
+                            Open
+                          </button>
+                        </article>
+                      )}
                     </div>
                   </section>
                 </>
