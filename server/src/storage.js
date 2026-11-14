@@ -1,4 +1,6 @@
 import {v2 as cloudinary} from 'cloudinary';
+import {rm} from 'node:fs/promises';
+import {resolve} from 'node:path';
 
 export function cloudinaryConfigured(){
  return Boolean(process.env.CLOUDINARY_URL||(
@@ -22,4 +24,14 @@ export async function uploadProductPhoto(businessId,file){
    resolve(result?.secure_url||result?.url);
   }).end(file.buffer);
  });
+}
+
+export async function deleteBusinessPhotos(businessId){
+ if(!/^[a-f0-9-]{36}$/i.test(businessId))throw new Error('Invalid business ID for photo cleanup');
+ const warnings=[];
+ try{await rm(resolve('uploads',businessId),{recursive:true,force:true})}catch(error){console.error(`Local photo cleanup failed for store ${businessId}:`,error);warnings.push('Local product photos could not be removed.')}
+ if(cloudinaryConfigured()){
+  try{await cloudinary.api.delete_resources_by_prefix(`tillora/products/${businessId}/`)}catch(error){console.error(`Cloud photo cleanup failed for store ${businessId}:`,error);warnings.push('Cloud product photos could not be removed.')}
+ }
+ return warnings;
 }

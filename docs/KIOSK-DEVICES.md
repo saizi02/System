@@ -10,7 +10,7 @@ The customer self-service till can run as its own **installed app** on a tablet 
    - **Admin** sees each kiosk as Online · ready / Customer shopping / Customer paying / Offline, with last-seen time.
    - **Cashier station** shows the same status on its overview, and a cash order created at a kiosk is labelled **Kiosk · <name>** so the cashier knows where to go.
    - Paid food orders still flow to the Kitchen display; stock is shared with every other channel.
-5. **Control** – Admin can put a kiosk in **Maintenance mode** (tablet shows "temporarily out of service"), **Unpair** it (tablet returns to the setup screen and a new code is issued) or remove it. All of this is in the Activity log.
+5. **Control** – Admin can put a kiosk in **Maintenance mode** (tablet shows "temporarily out of service"), activate a kiosk while it is offline (the change takes effect when the device reconnects), **Unpair** it (tablet returns to the setup screen and a new code is issued) or remove it. All of this is in the Activity log. Activation does not enable offline checkout; ordering still requires a backend connection.
 
 Kiosk behaviour: keeps the screen awake, blocks text selection/overscroll, returns to the welcome screen after 3 minutes of inactivity (clearing the cart), and returns from the receipt page automatically after 90 s or when the customer taps *Finish — next customer*.
 

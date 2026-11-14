@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import {randomBytes,createHash} from 'node:crypto';
 import {sql,transaction} from './db.js';
+import {deleteBusinessPhotos} from './storage.js';
 import {config} from './config.js';import {authorizePayment} from './payments.js';import {beginPayment,refreshOrder} from './paynowOrders.js';import {businessDay,formatPayNumber} from './payNumber.js';
 import {HttpError,authorize,assert,required,integer,cartItems,options,tokenHash,ROLES,canManage,strongPassword,canAdvance,NEXT_FULFILLMENT} from './helpers.js';
 const profiles=['grocery','food','clothing'];const currencies=['USD','ZIG'];
@@ -48,6 +49,26 @@ export async function action(name,input,req){
   if(input.vatRate!==undefined){const rate=Number(input.vatRate);assert(Number.isFinite(rate)&&rate>=0&&rate<=100,400,'Invalid VAT rate');add('vat_rate',rate)}
   if(input.domain!==undefined){authorize(actor,['super_admin']);add('domain',String(input.domain).slice(0,120))}
   assert(patches.length>0,400,'Nothing to update');vals.push(id);const result=await sql(`UPDATE businesses SET ${patches.join(',')},updated_at=now() WHERE id=$${vals.length} RETURNING id`,vals);assert(result.rowCount,404,'Store not found');await audit(id,actor.id,'business.updated');return{ok:true};
+ }
+ case 'deleteBusiness':{
+  const id=required(input.businessId,'businessId');authorize(actor,['super_admin']);
+  const businessName=await transaction(async c=>{
+   const business=(await c.query('SELECT name FROM businesses WHERE id=$1 FOR UPDATE',[id])).rows[0];assert(business,404,'Store not found');
+   await c.query('DELETE FROM purchase_orders WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM flags WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM orders WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM cart_transfers WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM shopping_sessions WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM cash_pay_number_counters WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM audit_logs WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM sessions WHERE user_id IN (SELECT id FROM staff WHERE business_id=$1)',[id]);
+   await c.query('DELETE FROM staff WHERE business_id=$1',[id]);
+   await c.query('DELETE FROM businesses WHERE id=$1',[id]);
+   await c.query('INSERT INTO audit_logs(actor_id,action,details) VALUES($1,$2,$3)',[actor.id,'business.deleted',JSON.stringify({businessId:id,name:business.name})]);
+   return business.name;
+  });
+  const photoWarnings=await deleteBusinessPhotos(id);
+  return{ok:true,...(photoWarnings.length?{warning:`Store "${businessName}" and its database data were deleted, but ${photoWarnings.join(' ')}`}: {})};
  }
  case 'upsertBranch':{
   const id=required(input.businessId,'businessId');authorize(actor,['super_admin','business_admin'],id);const name=required(input.name,'branch name');let row;
