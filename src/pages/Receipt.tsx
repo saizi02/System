@@ -9,6 +9,9 @@ import { useDoc } from "../lib/live";
 import { money, timestamp, type Order, type Business } from "../lib/types";
 import { Brand, Pill } from "../components/UI";
 import { getKioskDevice } from "../lib/kiosk";
+import PrinterSetup from "../components/PrinterSetup";
+import { isAndroidPrinterAvailable, printBluetooth } from "../lib/nativePrinter";
+import { receiptPrintText } from "../lib/printing";
 export default function Receipt() {
   const { config: appConfig } = useConfig(),
     isSim = appConfig.payments.simulated;
@@ -81,7 +84,14 @@ export default function Receipt() {
         branchId: order.branchId,
         orderId,
       });
-      window.print();
+      if (isAndroidPrinterAvailable()) {
+        await printBluetooth({
+          text: receiptPrintText(order, business, vatRate),
+          qrData: order.id,
+        });
+      } else {
+        window.print();
+      }
     } catch (e) {
       setError((e as Error).message);
     }
@@ -315,6 +325,7 @@ export default function Receipt() {
                 <Printer size={18} /> Print physical receipt
               </button>
             )}
+            {!locked && <PrinterSetup />}
             {order.status === "paid" && order.source !== "kiosk" && (
               <button
                 className="btn btn-outline receipt-print"

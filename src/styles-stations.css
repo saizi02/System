@@ -33,6 +33,16 @@
 .account-form{display:grid;gap:16px;max-width:430px}.account-meta{display:flex;align-items:center;gap:7px;margin-bottom:18px}
 .dialog-overlay{position:fixed;inset:0;background:#0b1630a8;z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
 .dialog-sheet{position:relative;background:#fff;border-radius:20px;padding:30px;width:min(100%,480px);max-height:92vh;overflow:auto;display:grid;gap:14px;box-shadow:0 30px 80px #0b163066}
+.printer-setup{max-width:390px;margin:12px auto;padding:12px 14px;border:1px solid #d5dfeb;border-radius:12px;background:#fff;color:#40546d;font-size:12px}
+.printer-setup summary{display:flex;align-items:center;gap:8px;font-weight:800;cursor:pointer}
+.printer-setup p{margin:10px 0;color:#7c8aa0}
+.printer-setup>small{display:block;margin-top:8px;color:#7c8aa0;line-height:1.5}
+.printer-setup-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.printer-setup-actions .btn,.printer-setup>.btn{font-size:11px;padding:8px 10px}
+.printer-choice{display:flex;width:100%;align-items:center;justify-content:space-between;margin:6px 0;padding:9px 10px;border:1px solid #d5dfeb;border-radius:9px;background:#f8faff;color:#233958;text-align:left;cursor:pointer}
+.printer-choice>span{display:grid;grid-template-columns:18px 1fr;gap:2px 8px;align-items:center;font-weight:700}
+.printer-choice>span small{grid-column:2;color:#7c8aa0;font-size:10px;font-weight:500}
+.printer-choice>svg{color:#177a49}
 .dialog-sheet h2,.dialog-sheet h3{margin:0}.dialog-close{position:absolute;right:14px;top:14px;border:0;background:#f0f4fa;border-radius:50%;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:#40546d}
 
 /* stand-alone station sign-in */

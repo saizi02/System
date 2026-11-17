@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
+    "android:add": "cap add android",
+    "android:sync": "node scripts/check-android-url.mjs && npm run build && cap sync android",
+    "android:open": "cap open android",
     "preview": "vite preview",
     "check": "tsc --noEmit -p tsconfig.app.json",
     "api:dev": "npm --prefix server run dev",
@@ -17,6 +20,8 @@
     "test": "npm --prefix server test"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
     "@neon/config": "^1.11.3",
     "@neon/env": "^1.6.15",
     "@zxing/browser": "^0.1.5",
@@ -27,6 +32,7 @@
     "react-router-dom": "^7.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.7.0",

@@ -11,7 +11,7 @@ A self-service checkout web app for grocery, fast-food and fashion outlets. It c
 - Kitchen display (Food stores): live New → Preparing → Ready board with timers and optional sound alert; the Cashier is notified when an order is ready.
 - Checkout: server-side prices, inventory transactions, one-time order keys, and stock reservation/release for online payments.
 - Payments: **Paynow Zimbabwe** supports EcoCash, OneMoney and card payments; cash is confirmed by the Cashier. Configure merchant credentials and test mode as described in [docs/PAYNOW.md](docs/PAYNOW.md). With no provider configured, the system is cash-only; demo approvals are not enabled by default.
-- Receipts: digital receipt plus browser printing with thermal 80 mm print CSS.
+- Receipts: digital receipt plus browser printing; the installable Android companion can print directly to paired Bluetooth Classic ESC/POS printers (see [docs/ANDROID-PRINTER.md](docs/ANDROID-PRINTER.md)).
 - Currency: USD and ZiG using per-store rate snapshots.
 
 **No weighing-device workflow**. Grocery products are sold as whole units by barcode or catalogue selection.
@@ -67,9 +67,9 @@ Customer PWA / touch-kiosk  ·  Cashier station  ·  Kitchen display  ·  Admin 
 
 ## Testing and limitations
 
-Backend validation unit tests can run with `npm test` after installation. The application still needs **local npm dependency installation, an actual PostgreSQL database, a successful production build and hands-on end-to-end tests**. A source archive is not proof of complete production readiness.
+Backend validation unit tests can run with `npm test` after installation. The application still needs **local npm dependency installation, an actual PostgreSQL database, a successful production build and hands-on end-to-end tests**. Android Bluetooth printing must be built and tested on the target printer; a source archive is not proof of complete production readiness.
 
-Offline browsing and draft cart persistence are supported where cached; offline checkout is **intentionally disabled** to prevent incorrect stock or duplicate transactions. Live data updates use 3-second polling, not push sockets. Receipt printing opens the normal browser print dialog; hardware-specific silent printer control is not included. Live payments require an approved Paynow merchant integration and credentials; the app defaults to Paynow test mode only when configured.
+Offline browsing and draft cart persistence are supported where cached; offline checkout is **intentionally disabled** to prevent incorrect stock or duplicate transactions. Live data updates use 3-second polling, not push sockets. Browser receipt printing opens the normal print dialog; direct Android printing is limited to paired Bluetooth Classic ESC/POS/SPP printers in the companion app. Live payments require an approved Paynow merchant integration and credentials; the app defaults to Paynow test mode only when configured.
 
 See [docs/ACCEPTANCE-CHECKLIST.md](docs/ACCEPTANCE-CHECKLIST.md) for functional checks before demonstration.
 

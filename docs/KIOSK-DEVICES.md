@@ -26,4 +26,4 @@ For install testing on a tablet, using the PC's address (example `192.168.1.113`
 In development the API automatically accepts requests from devices on your private network (192.168.x.x, 10.x.x.x, 172.16–31.x.x). In production only the origins in `APP_ORIGIN` are accepted.
 
 ## Lock the device down (optional)
-Android: *Screen pinning* or a kiosk launcher. iPad: *Guided Access*. Windows POS: *Assigned access* (kiosk mode) with Edge/Chrome opening the installed app. For unattended receipt printing, start Chrome with `--kiosk-printing` and set the thermal printer as default; otherwise the browser print dialog appears.
+Android: *Screen pinning* or a kiosk launcher. iPad: *Guided Access*. Windows POS: *Assigned access* (kiosk mode) with Edge/Chrome opening the installed app. Android companion users can print directly to paired ESC/POS/SPP Bluetooth printers; see [ANDROID-PRINTER.md](ANDROID-PRINTER.md). For unattended browser printing on Windows, start Chrome with `--kiosk-printing` and set the thermal printer as default; otherwise the browser print dialog appears.

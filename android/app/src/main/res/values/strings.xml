@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tillcore</string>
+    <string name="title_activity_main">Tillcore</string>
+    <string name="package_name">com.tillcore.sstwas</string>
+    <string name="custom_url_scheme">com.tillcore.sstwas</string>
+</resources>
