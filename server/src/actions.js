@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import {randomBytes,createHash} from 'node:crypto';
 import {sql,transaction} from './db.js';
 import {deleteBusinessPhotos} from './storage.js';
-import {config} from './config.js';import {authorizePayment} from './payments.js';import {beginPayment,refreshOrder} from './paynowOrders.js';import {businessDay,formatPayNumber} from './payNumber.js';
+import {config} from './config.js';import {authorizePayment} from './payments.js';import {beginPayment,refreshOrder} from './paynowOrders.js';import {beginEcoCashPayment,refreshEcoCashOrder} from './ecocashOrders.js';import {businessDay,formatPayNumber} from './payNumber.js';
 import {HttpError,authorize,assert,required,integer,cartItems,options,tokenHash,ROLES,canManage,strongPassword,canAdvance,NEXT_FULFILLMENT} from './helpers.js';
 const profiles=['grocery','food','clothing'];const currencies=['USD','ZIG'];
 const one=async(q,p=[])=>(await sql(q,p)).rows[0];
@@ -134,10 +134,11 @@ export async function action(name,input,req){
    await audit(businessId,actor.id,'purchase_order.received',{purchaseOrderId});return{ok:true};
   }
  case 'createStaff':{
-  // Super Admin: any role, any store. General Admin: Cashier / Kitchen accounts for their own store only.
+  // Super Admin: platform and store Admin accounts only. General Admin: operational station accounts for its own store only.
   authorize(actor,['super_admin','business_admin']);
   const isSuper=actor.role==='super_admin';
   const role=required(input.role,'role',40);assert(ROLES.includes(role),400,'Unknown role');
+  if(isSuper)assert(['super_admin','business_admin'].includes(role),403,'Super Admin accounts cannot create operational station accounts');
   if(!isSuper)assert(['cashier','kitchen','exit_verifier'].includes(role),403,'General Admins can only create operational station accounts');
   const email=required(input.email,'email',250).toLowerCase();assert(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email),400,'Invalid email');
   const displayName=required(input.displayName,'full name',90);
@@ -248,15 +249,16 @@ export async function action(name,input,req){
     payNumber=formatPayNumber(counter.last_number);
    }
    const row=(await c.query('INSERT INTO orders(business_id,branch_id,customer_uid,idempotency_key,items,total_cents,currency,rate,total_minor,method,payment_outcome,service_type,order_note,status,source,kiosk_device_id,kiosk_name,payment_reference,pay_number,pay_day) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id',[businessId,branchId,guestId,key,JSON.stringify(lines),totalCents,currency,rate,totalMinor,input.method,extra.paymentOutcome,extra.serviceType,extra.orderNote,status,input.source,device?.id||null,device?.name||null,pay.reference||null,payNumber,payDay])).rows[0];
-   return{orderId:row.id,status,totalCents,payNumber,startPaynow:status==='awaiting_payment'};
+   return{orderId:row.id,status,totalCents,payNumber,startPaynow:status==='awaiting_payment'&&config.paymentProvider==='paynow',startEcoCash:status==='awaiting_payment'&&config.paymentProvider==='ecocash'};
   });
   if(placed.startPaynow){const{startPaynow:_flag,...rest}=placed;return{...rest,...await beginPayment(rest,{method:input.method,phone:input.phone})}}
+  if(placed.startEcoCash){const{startEcoCash:_flag,...rest}=placed;return{...rest,...await beginEcoCashPayment(rest,{phone:input.phone})}}
   return placed;
  }
  case 'refreshPayment':{
   const orderId=required(input.orderId,'order ID');const o=await one('SELECT customer_uid,business_id FROM orders WHERE id=$1',[orderId]);
   assert(o&&(o.customer_uid===guestId||(actor&&(actor.role==='super_admin'||actor.business_id===o.business_id))),404,'Order not found');
-  return{status:await refreshOrder(orderId)};
+  return{status:await (config.paymentProvider==='ecocash'?refreshEcoCashOrder(orderId):refreshOrder(orderId))};
  }
  case 'confirmCash':case 'cancelCash':{
   const{businessId,branchId}=scope(input);authorize(actor,['cashier'],businessId,branchId);const orderId=required(input.orderId,'order ID');return transaction(async c=>{

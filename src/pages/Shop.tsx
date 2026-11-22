@@ -29,8 +29,8 @@ export default function Shop({mode='mobile',scope,onState}:{mode?:'mobile'|'kios
   return()=>window.removeEventListener('popstate',keepKioskOpen);
  },[mode]);
  useEffect(()=>{if(!methods.includes(method))setMethod(methods[0]||'cash')},[methods.join(),method]);
- const paynowOn=appConfig.payments.provider==='paynow',payCurrency=appConfig.payments.currency;
- useEffect(()=>{if(paynowOn&&method!=='cash'&&payCurrency&&currency!==payCurrency)setCurrency(payCurrency)},[paynowOn,method,payCurrency,currency]);
+ const ecoCashOn=appConfig.payments.provider==='ecocash',paynowOn=appConfig.payments.provider==='paynow'||(ecoCashOn&&method==='ecocash'),payCurrency=appConfig.payments.currency;
+ useEffect(()=>{if((paynowOn||ecoCashOn)&&method!=='cash'&&payCurrency&&currency!==payCurrency)setCurrency(payCurrency)},[paynowOn,ecoCashOn,method,payCurrency,currency]);
  useEffect(()=>{onState?.(paymentDialog?'checkout':cart.length?'shopping':'idle')},[paymentDialog,cart.length,mode]);
  useEffect(()=>{if(mode==='kiosk')return;try{localStorage.setItem(key,JSON.stringify(cart))}catch{}},[key,cart,mode]);
  useEffect(()=>{if(mode!=='kiosk')return;localStorage.removeItem(key);let timer:ReturnType<typeof setTimeout>;const reset=()=>{clearTimeout(timer);timer=setTimeout(()=>{setCart([]);setShowCart(false);setSearch('')},180000)};reset();window.addEventListener('pointerdown',reset);window.addEventListener('keydown',reset);return()=>{clearTimeout(timer);window.removeEventListener('pointerdown',reset);window.removeEventListener('keydown',reset)}},[key,mode]);

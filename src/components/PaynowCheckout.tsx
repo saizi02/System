@@ -35,7 +35,7 @@ export default function PaynowCheckout({method,totalMinor,currency,storeName,bus
    <h2 id="pn-heading">{method==='cash'?'Pay at the cashier':'Pay '+money(totalMinor,currency)}</h2>
    <p className="muted">{storeName}</p>
    <div className="pn-amount"><span>Amount due</span><strong>{money(totalMinor,currency)}</strong></div>
-   {testMode&&method!=='cash'&&<p className="pn-test" role="note">Paynow TEST MODE: no real money moves.{mobile?' Use 0771111111 to simulate a successful payment.':' Choose "TESTING: Faked Success" on the Paynow page.'}</p>}
+   {testMode&&method!=='cash'&&<p className="pn-test" role="note">Sandbox/test mode: no real money moves. Use only the test instructions and whitelisted customer number from your payment provider.</p>}
    {mobile&&<label className="field">{labels[method]} number
     <input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="tel" maxLength={16} placeholder={method==='ecocash'?'0771234567':'0712345678'} aria-invalid={!!phone&&!valid}/>
     {!!phone&&!valid&&<small className="pn-bad">{method==='ecocash'?'Enter an Econet number starting 077 or 078.':'Enter a NetOne number starting 071.'}</small>}

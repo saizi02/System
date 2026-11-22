@@ -141,7 +141,7 @@ function StaffManager({meId,owner,storeId,stores,members,busy,run}:{meId:string;
  const branchRef=useMemo(()=>target?listResource('businesses',target.id,'branches'):null,[target?.id]);
  const {items:branches}=useLive<Branch>(branchRef,[target?.id]);
  const isFood=target?.profile==='food';
- const roles:Role[]=owner?['super_admin','business_admin','cashier',...(isFood?['kitchen' as Role]:[]),...(target?.profile==='grocery'?['exit_verifier' as Role]:[])]:['cashier',...(isFood?['kitchen' as Role]:[]),...(target?.profile==='grocery'?['exit_verifier' as Role]:[])];
+ const roles:Role[]=owner?['super_admin','business_admin']:['cashier',...(isFood?['kitchen' as Role]:[]),...(target?.profile==='grocery'?['exit_verifier' as Role]:[])];
  useEffect(()=>{if(!roles.includes(role))setRole(owner?'business_admin':'cashier')},[role,isFood,owner]);
  useEffect(()=>{if(!branches.some(b=>b.id===branch))setBranch(branches[0]?.id||'')},[branches,branch]);
  const needsStore=role!=='super_admin',needsBranch=role==='cashier'||role==='kitchen'||role==='exit_verifier';
@@ -173,9 +173,9 @@ function StaffManager({meId,owner,storeId,stores,members,busy,run}:{meId:string;
    <Table columns={['Name','Role','Store','Status','Last sign-in','Actions']}>{members.map(m=><tr key={m.uid}><td><strong>{m.displayName||m.email}</strong><small className="table-sub">{m.email}{m.uid===meId?' · you':''}</small></td><td><RoleBadge role={m.role}/></td><td>{m.role==='super_admin'?'All stores':stores.find(s=>s.id===m.businessId)?.name||'—'}</td><td><Pill text={m.disabled?'suspended':m.mustChangePassword?'pending_password':'active'}/></td><td>{m.lastLoginAt?timestamp(m.lastLoginAt):'Never'}</td><td>{canAct(m)?<div className="table-actions"><button disabled={busy} onClick={()=>void run('setStaffStatus',{uid:m.uid,disabled:!m.disabled},m.disabled?'Account enabled':'Account disabled — sessions ended')}>{m.disabled?'Enable':'Disable'}</button><button disabled={busy} onClick={()=>setResetting(m)}><KeyRound size={12}/> Reset password</button></div>:<span className="muted">—</span>}</td></tr>)}</Table>
    {!members.length&&<Empty title="No staff accounts yet"/>}
   </Card>
-  <Card title="Stand-alone stations" info="Each dashboard has its own address and sign-in. Open it on a tablet or second screen — it stays in sync through the shared database."><div className="qr-grid station-links">
-   {[{path:'/cashier',title:'Cashier station',icon:<Wallet/>,text:'Cash confirmation, POS, handover'},{path:'/kitchen',title:'Kitchen display',icon:<ChefHat/>,text:'Food stores only'},{path:'/exit-verifier',title:'Exit verification',icon:<ScanLine/>,text:'Grocery receipt verification'},{path:'/admin',title:'Admin console',icon:<ShieldCheck/>,text:'Super Admin & General Admin'}].map(x=><div className="qr-box" key={x.path}><QRCodeSVG value={stationUrl(x.path)} size={120}/><h3>{x.icon} {x.title}</h3><small>{stationUrl(x.path)}</small><p>{x.text}</p><a className="btn btn-outline" href={x.path} target="_blank" rel="noreferrer">Open <ExternalLink size={14}/></a></div>)}
-  </div></Card>
+  {!owner&&<Card title="Stand-alone stations" info="Each dashboard has its own address and sign-in. Open it on a tablet or second screen — it stays in sync through the shared database."><div className="qr-grid station-links">
+   {[{path:'/cashier',title:'Cashier station',icon:<Wallet/>,text:'Cash confirmation, POS, handover'},{path:'/kitchen',title:'Kitchen display',icon:<ChefHat/>,text:'Food stores only'},{path:'/exit-verifier',title:'Exit verification',icon:<ScanLine/>,text:'Grocery receipt verification'}].map(x=><div className="qr-box" key={x.path}><QRCodeSVG value={stationUrl(x.path)} size={120}/><h3>{x.icon} {x.title}</h3><small>{stationUrl(x.path)}</small><p>{x.text}</p><a className="btn btn-outline" href={x.path} target="_blank" rel="noreferrer">Open <ExternalLink size={14}/></a></div>)}
+  </div></Card>}
   {resetting&&<ResetPassword member={resetting} busy={busy} run={run} onClose={()=>setResetting(null)}/>}
  </>;
 }

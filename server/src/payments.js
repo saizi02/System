@@ -5,7 +5,7 @@ import {normalizePhone} from './paynow.js';
 /** Payment provider interface.
  *  authorize({method,amountMinor,currency,orderRef,demoOutcome}) -> {outcome:'approved'|'declined'|'pending',reference}
  *    'pending' means a person must confirm it (cash at the cashier).
- *  To add a real gateway (Paynow, EcoCash API, a card-terminal bridge): add an entry to `providers`, set PAYMENT_PROVIDER=<name>.
+ *  Real gateways (Paynow and EcoCash) create an awaiting order first, then confirm or poll it outside the stock transaction.
  *  Keep secrets in environment variables, never in the browser. */
 const simulated={
  name:'simulated',
@@ -27,8 +27,18 @@ const paynow={
   return{outcome:'awaiting',reference:null};
  }
 };
+const ecocash={
+ name:'ecocash',
+ methods:['cash','ecocash'],
+ async authorize({method,currency,phone}){
+  if(method==='cash')return{outcome:'pending',reference:null};
+  if(currency!==config.ecocash.currency)throw new HttpError(409,`EcoCash payments are taken in ${config.ecocash.currency}. Please switch the currency to ${config.ecocash.currency}, or choose cash.`);
+  if(!normalizePhone('ecocash',phone))throw new HttpError(400,'Enter a valid EcoCash number, for example 0771234567.');
+  return{outcome:'awaiting',reference:null};
+ }
+};
 const cashOnly={name:'cash-only',methods:['cash'],async authorize(){return{outcome:'pending',reference:null}}};
-export const providers={simulated,paynow,'cash-only':cashOnly};
+export const providers={simulated,paynow,ecocash,'cash-only':cashOnly};
 export function getProvider(){
  const p=providers[config.paymentProvider];if(!p)throw Error(`Unknown PAYMENT_PROVIDER "${config.paymentProvider}". Available: ${Object.keys(providers).join(', ')}`);
  return p.name==='simulated'&&!config.allowSimulatedPayments?cashOnly:p

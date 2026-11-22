@@ -10,3 +10,4 @@ server/uploads/
 *.log
 .DS_Store
 .neon
+render.env

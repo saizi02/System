@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {listResource, filterResource, equals} from '../lib/resources';
-import {Link} from 'react-router-dom';
+import {Link,useNavigate} from 'react-router-dom';
 import {ArrowRight, BadgeCheck, ChevronRight, CircleCheck, Download, Monitor, PackageCheck, ScanBarcode, ShieldCheck, Shirt, ShoppingBasket, Smartphone, Store, UtensilsCrossed, WifiOff} from 'lucide-react';
 import {useLive} from '../lib/live';
 import {Brand, Empty} from '../components/UI';
@@ -41,17 +41,22 @@ function HeroBackdrop({onFound}:{onFound:(count:number)=>void}){
   return <div className="hero-backdrop" aria-hidden="true">{slides.map((u,i)=><div key={u} className={'slide'+(i===active?' on':'')} style={{backgroundImage:`url(${u})`}}/>)}</div>;
 }
 function ActiveBusiness({store}:{store:Business}){
+  const navigate=useNavigate();
   const ref=useMemo(()=>filterResource(listResource('businesses',store.id,'branches'),equals('active',true)),[store.id]);
   const {items:locations,error}=useLive<Branch>(ref,[store.id]);
   const style=profiles.find(p=>p.id===store.profile)||profiles[0];
   const Icon=style.icon;
-  return <article className="landing-store-card">
+  const openStore=()=>{
+   const branch=locations[0];
+   if(branch)navigate(`/shop/${store.id}/${branch.id}`);
+  };
+  return <article className="landing-store-card interactive-card" role={locations.length?'link':undefined} tabIndex={locations.length?0:undefined} aria-label={locations.length?`Open ${store.name}`:undefined} onClick={openStore} onKeyDown={e=>{if(locations.length&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openStore()}}}>
     <div className={'landing-store-art '+style.style}><span className="store-icon-frame"><Icon size={31}/></span><span className="store-profile-tag">{style.title}</span></div>
     <div className="landing-store-body"><h3>{store.name}</h3><p>{locations.length} checkout {locations.length===1?'location':'locations'} available</p>
       {error&&<p className="error" role="alert">{error}</p>}
       {locations.map(branch=><div key={branch.id} className="landing-location">
         <div><Store size={16}/><span>{branch.name}</span></div>
-        <div className="landing-location-buttons"><Link to={`/shop/${store.id}/${branch.id}`}>Mobile <Smartphone size={14}/></Link><Link to={`/kiosk/${store.id}/${branch.id}`}>Kiosk <Monitor size={14}/></Link></div>
+        <div className="landing-location-buttons"><Link to={`/shop/${store.id}/${branch.id}`} onClick={e=>e.stopPropagation()}>Mobile <Smartphone size={14}/></Link><Link to={`/kiosk/${store.id}/${branch.id}`} onClick={e=>e.stopPropagation()}>Kiosk <Monitor size={14}/></Link></div>
       </div>)}
     </div>
   </article>;

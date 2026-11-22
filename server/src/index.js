@@ -10,7 +10,7 @@ import {pool,sql} from './db.js';
 import {HttpError,assert,tokenHash,publicStaff,PORTALS} from './helpers.js';
 import {getData} from './read.js';
 import {action,audit} from './actions.js';
-import {config,publicOrigin,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv,inventoryInsights} from './reports.js';import {handleResult,sweep} from './paynowOrders.js';
+import {config,publicOrigin,validateConfig} from './config.js';import {rateLimit} from './ratelimit.js';import {enabledMethods,getProvider} from './payments.js';import {closeout,salesCsv,stockCsv,inventoryInsights} from './reports.js';import {handleResult,sweep} from './paynowOrders.js';import {sweepEcoCash} from './ecocashOrders.js';
 import {uploadProductPhoto} from './storage.js';
 const app=express();const production=process.env.NODE_ENV==='production';const PORT=Number(process.env.PORT||3001);
 validateConfig();
@@ -54,7 +54,7 @@ app.get('/api/config',async(req,res,next)=>{try{
   if(rows.length===1||config.storeId&&rows.length){const b=rows[0];const branches=(await sql('SELECT id,name FROM branches WHERE business_id=$1 AND active ORDER BY created_at',[b.id])).rows;store={...b,branches}}
  }
  const provider=getProvider();
- res.json({storeMode:config.storeMode,store,payments:{methods:enabledMethods(),simulated:provider.name==='simulated',provider:provider.name,currency:provider.name==='paynow'?config.paynow.currency:null,testMode:provider.name==='paynow'&&config.paynow.mode==='test'},timezone:config.timezone,version:config.version})
+ res.json({storeMode:config.storeMode,store,payments:{methods:enabledMethods(),simulated:provider.name==='simulated',provider:provider.name,currency:provider.name==='paynow'?config.paynow.currency:provider.name==='ecocash'?config.ecocash.currency:null,testMode:provider.name==='paynow'?config.paynow.mode==='test':provider.name==='ecocash'&&config.ecocash.mode==='sandbox'},timezone:config.timezone,version:config.version})
 }catch(e){next(e)}});
 // Reports and exports (staff only; authorisation is checked per branch in reports.js).
 app.get('/api/reports/inventory-insights',async(req,res,next)=>{try{assert(req.staff&&!req.staff.disabled&&!req.staff.must_change_password,401,'Sign in required');res.json(await inventoryInsights(req.staff,req.query))}catch(e){next(e)}});
@@ -104,5 +104,6 @@ app.use((req,res)=>res.status(404).json({error:'Not found'}));
 app.use((error,req,res,next)=>{const status=error instanceof HttpError?error.status:error.code==='23505'?409:error.code==='22P02'?400:error.code==='23503'?400:error instanceof multer.MulterError||error.message?.startsWith('Only JPEG')?400:500;const message=status===500?'Internal server error':error.code==='23505'?'That value already exists (for example, an account with this email)':error.message;console.error(`[${status}]`,error.message);res.status(status).json({error:message})});
 const server=app.listen(PORT,'0.0.0.0',()=>console.log(`Tillcore ready on port ${PORT} · mode=${config.storeMode} · payments=${getProvider().name}${config.production?'':' · development'}`));
 if(getProvider().name==='paynow')setInterval(()=>{void sweep().catch(()=>{})},30000).unref();
+if(getProvider().name==='ecocash')setInterval(()=>{void sweepEcoCash().catch(()=>{})},30000).unref();
 setInterval(()=>{void sql('DELETE FROM sessions WHERE expires_at<now()').catch(()=>{})},3600000).unref();
 for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{console.log(`${sig}: shutting down`);server.close(()=>{void pool.end().finally(()=>process.exit(0))});setTimeout(()=>process.exit(1),10000).unref()});

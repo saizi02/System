@@ -14,6 +14,18 @@ export const config={
  paymentProvider:env.PAYMENT_PROVIDER||'cash-only',
  /** Paynow Zimbabwe (PAYMENT_PROVIDER=paynow). 'test' lets the merchant account fake payments; 'live' moves real money. */
  paynow:{id:env.PAYNOW_INTEGRATION_ID?.trim()||'',key:env.PAYNOW_INTEGRATION_KEY?.trim()||'',authEmail:env.PAYNOW_AUTH_EMAIL?.trim()||'',mode:env.PAYNOW_MODE==='live'?'live':'test',currency:(env.PAYNOW_CURRENCY||'USD').trim().toUpperCase(),expiryMinutes:Number(env.PAYNOW_EXPIRY_MINUTES||10)},
+ /** EcoCash Online Payments. Credentials and merchant settings stay on the server. */
+ ecocash:{
+  username:env.ECOCASH_USERNAME?.trim()||'',password:env.ECOCASH_PASSWORD||'',
+  merchantCode:env.ECOCASH_MERCHANT_CODE?.trim()||'',merchantPin:env.ECOCASH_MERCHANT_PIN?.trim()||'',
+  merchantNumber:env.ECOCASH_MERCHANT_NUMBER?.trim()||'',terminalId:env.ECOCASH_TERMINAL_ID?.trim()||'',
+  location:env.ECOCASH_LOCATION?.trim()||'',merchantName:env.ECOCASH_MERCHANT_NAME?.trim()||'',
+  superMerchantName:env.ECOCASH_SUPER_MERCHANT_NAME?.trim()||'',
+  mode:env.ECOCASH_MODE==='live'?'live':'sandbox',
+  apiBaseUrl:(env.ECOCASH_API_BASE_URL||'https://developers.ecocash.co.zw/sandbox/payment/v1').trim().replace(/\/+$/,''),
+  currency:(env.ECOCASH_CURRENCY||'USD').trim().toUpperCase(),
+  expiryMinutes:Number(env.ECOCASH_EXPIRY_MINUTES||10)
+ },
  /** In production, simulated card / mobile-money approvals are OFF unless explicitly allowed (they approve any payment). */
  allowSimulatedPayments:!production||env.ALLOW_SIMULATED_PAYMENTS==='true',
  staticDir:env.STATIC_DIR||'../dist',
@@ -37,6 +49,15 @@ export function validateConfig(){
   if(!['USD','ZIG'].includes(p.currency))problems.push('PAYNOW_CURRENCY must be USD or ZIG (the currency of your Paynow integration)');
   if(!(p.expiryMinutes>=3&&p.expiryMinutes<=60))problems.push('PAYNOW_EXPIRY_MINUTES must be between 3 and 60');
   if(production&&p.mode==='test')console.warn('WARNING: PAYNOW_MODE is test. Set PAYNOW_MODE=live to accept real money.');
+ }
+ if(config.paymentProvider==='ecocash'){
+  const e=config.ecocash;
+  for(const [name,value] of Object.entries({ECOCASH_USERNAME:e.username,ECOCASH_PASSWORD:e.password,ECOCASH_MERCHANT_CODE:e.merchantCode,ECOCASH_MERCHANT_PIN:e.merchantPin,ECOCASH_MERCHANT_NUMBER:e.merchantNumber,ECOCASH_TERMINAL_ID:e.terminalId,ECOCASH_LOCATION:e.location,ECOCASH_MERCHANT_NAME:e.merchantName,ECOCASH_SUPER_MERCHANT_NAME:e.superMerchantName}))if(!value)problems.push(`${name} is required when PAYMENT_PROVIDER=ecocash`);
+  try{const u=new URL(e.apiBaseUrl);if(u.protocol!=='https:'&&production)problems.push('ECOCASH_API_BASE_URL must use HTTPS in production')}catch{problems.push('ECOCASH_API_BASE_URL must be a valid URL')}
+  if(e.mode==='live'&&(!env.ECOCASH_API_BASE_URL||/\/sandbox\//i.test(e.apiBaseUrl)))problems.push('Set the production ECOCASH_API_BASE_URL supplied by EcoCash before setting ECOCASH_MODE=live');
+  if(!['USD','ZIG'].includes(e.currency))problems.push('ECOCASH_CURRENCY must be USD or ZIG');
+  if(!(e.expiryMinutes>=3&&e.expiryMinutes<=60))problems.push('ECOCASH_EXPIRY_MINUTES must be between 3 and 60');
+  if(production&&e.mode==='sandbox')console.warn('WARNING: EcoCash is in SANDBOX mode. No real money moves.');
  }
  if(problems.length)throw Error('Configuration problems:\n - '+problems.join('\n - '));
 }

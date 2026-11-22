@@ -33,7 +33,7 @@ export async function beginPayment({orderId},{method,phone}){
 }
 
 /** Move an awaiting order to paid or failed, once. Safe to call repeatedly and concurrently. */
-export async function settle(orderId,verdict,{amount=null,paynowReference=null}={}){
+export async function settle(orderId,verdict,{amount=null,paymentReference=null,provider='paynow'}={}){
  return transaction(async c=>{
   const o=(await c.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[orderId])).rows[0];
   if(!o||o.status!=='awaiting_payment')return{changed:false,status:o?.status||null};
@@ -44,16 +44,16 @@ export async function settle(orderId,verdict,{amount=null,paynowReference=null}=
     return{changed:false,status:o.status};
    }
    const {payNumber,payDay}=await nextPayNumber(c,o.business_id,o.branch_id);
-   await c.query("UPDATE orders SET status='paid',payment_outcome='approved',payment_simulated=false,payment_reference=COALESCE($2,payment_reference),pay_number=$3,pay_day=$4,payment_checked_at=now(),updated_at=now() WHERE id=$1",[orderId,paynowReference,payNumber,payDay]);
-   await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,NULL,$2,$3)',[o.business_id,'payment.paynow_paid',JSON.stringify({orderId,paynowReference,method:o.method})]);
+   await c.query("UPDATE orders SET status='paid',payment_outcome='approved',payment_simulated=false,payment_reference=COALESCE($2,payment_reference),payment_phone=NULL,pay_number=$3,pay_day=$4,payment_checked_at=now(),updated_at=now() WHERE id=$1",[orderId,paymentReference,payNumber,payDay]);
+   await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,NULL,$2,$3)',[o.business_id,`payment.${provider}_paid`,JSON.stringify({orderId,paymentReference,method:o.method})]);
    return{changed:true,status:'paid'};
   }
   const sorted=[...o.items].sort((a,b)=>(a.productId+a.variantId).localeCompare(b.productId+b.variantId));
   await tag(c,'payment_failed',orderId);
   for(const i of sorted)await c.query('UPDATE inventory SET quantity=quantity+$1,updated_at=now() WHERE business_id=$2 AND branch_id=$3 AND product_id=$4 AND variant_id=$5',[i.quantity,o.business_id,o.branch_id,i.productId,i.variantId]);
   // Release the idempotency key so the customer can retry instead of being returned this failed order.
-  await c.query("UPDATE orders SET status='failed',payment_outcome='declined',idempotency_key=idempotency_key||':failed:'||id::text,payment_checked_at=now(),updated_at=now() WHERE id=$1",[orderId]);
-  await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,NULL,$2,$3)',[o.business_id,'payment.paynow_failed',JSON.stringify({orderId,method:o.method})]);
+  await c.query("UPDATE orders SET status='failed',payment_outcome='declined',payment_phone=NULL,idempotency_key=idempotency_key||':failed:'||id::text,payment_checked_at=now(),updated_at=now() WHERE id=$1",[orderId]);
+  await c.query('INSERT INTO audit_logs(business_id,actor_id,action,details) VALUES($1,NULL,$2,$3)',[o.business_id,`payment.${provider}_failed`,JSON.stringify({orderId,method:o.method})]);
   return{changed:true,status:'failed'};
  });
 }
@@ -70,7 +70,7 @@ export async function refreshOrder(orderId,{minGapMs=5000}={}){
  const expired=o.payment_expires_at?new Date(o.payment_expires_at).getTime()<now:now-new Date(o.created_at).getTime()>config.paynow.expiryMinutes*60000+120000;
  let verdict='pending',detail={};
  if(o.poll_url){
-  try{const r=await paynow().poll(o.poll_url);verdict=r.verdict;detail={amount:r.amount,paynowReference:r.paynowReference}}
+  try{const r=await paynow().poll(o.poll_url);verdict=r.verdict;detail={amount:r.amount,paymentReference:r.paynowReference}}
   catch(e){console.error(JSON.stringify({t:new Date().toISOString(),paynowPollError:e.message,orderId}))}
  }
  await sql('UPDATE orders SET payment_checked_at=now() WHERE id=$1 AND status=$2',[orderId,'awaiting_payment']).catch(()=>{});

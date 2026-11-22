@@ -9,9 +9,6 @@ import { useDoc } from "../lib/live";
 import { money, timestamp, type Order, type Business } from "../lib/types";
 import { Brand, Pill } from "../components/UI";
 import { getKioskDevice } from "../lib/kiosk";
-import PrinterSetup from "../components/PrinterSetup";
-import { isAndroidPrinterAvailable, printBluetooth } from "../lib/nativePrinter";
-import { receiptPrintText } from "../lib/printing";
 export default function Receipt() {
   const { config: appConfig } = useConfig(),
     isSim = appConfig.payments.simulated;
@@ -84,14 +81,7 @@ export default function Receipt() {
         branchId: order.branchId,
         orderId,
       });
-      if (isAndroidPrinterAvailable()) {
-        await printBluetooth({
-          text: receiptPrintText(order, business, vatRate),
-          qrData: order.id,
-        });
-      } else {
-        window.print();
-      }
+      window.print();
     } catch (e) {
       setError((e as Error).message);
     }
@@ -168,7 +158,7 @@ export default function Receipt() {
             )}
             {order.status === "awaiting_payment" && (
               <div className="cash-pending paynow-waiting" role="status">
-                <span>Paynow payment</span>
+                <span>{order.method === "ecocash" ? "EcoCash payment" : "Paynow payment"}</span>
                 <strong>{money(order.totalMinor, order.currency)}</strong>
                 <small>
                   {order.paymentInstructions ||
@@ -180,8 +170,8 @@ export default function Receipt() {
                   </a>
                 )}
                 <small>
-                  This page updates by itself as soon as Paynow confirms your
-                  payment. Please do not pay twice.
+                  This page updates automatically when the payment provider
+                  confirms your payment. Please do not pay twice.
                 </small>
               </div>
             )}
@@ -325,7 +315,6 @@ export default function Receipt() {
                 <Printer size={18} /> Print physical receipt
               </button>
             )}
-            {!locked && <PrinterSetup />}
             {order.status === "paid" && order.source !== "kiosk" && (
               <button
                 className="btn btn-outline receipt-print"

@@ -33,6 +33,13 @@ test('cash-only is the default and simulated payments require explicit opt-in',(
  assert.equal(run({NODE_ENV:'production',PAYMENT_PROVIDER:'simulated',ALLOW_SIMULATED_PAYMENTS:'true'},code).stdout.trim(),'cash,ecocash,card,bank|simulated');
  assert.match(run({PAYMENT_PROVIDER:'nope'},code).stderr,/Unknown PAYMENT_PROVIDER/);
 });
+test('EcoCash requires server credentials and enables only cash plus EcoCash',()=>{
+ const code="import('./src/config.js').then(({config,validateConfig})=>{validateConfig();import('./src/payments.js').then(m=>console.log(m.getProvider().name+'|'+m.enabledMethods().join(',')+'|'+config.ecocash.mode))}).catch(e=>console.log(e.message))";
+ assert.match(run({PAYMENT_PROVIDER:'ecocash'},code).stdout,/ECOCASH_USERNAME is required/);
+ const env={PAYMENT_PROVIDER:'ecocash',ECOCASH_MODE:'sandbox',ECOCASH_USERNAME:'sandbox-user',ECOCASH_PASSWORD:'sandbox-password',ECOCASH_MERCHANT_CODE:'001535',ECOCASH_MERCHANT_PIN:'0000',ECOCASH_MERCHANT_NUMBER:'788732685',ECOCASH_TERMINAL_ID:'UAT00003',ECOCASH_LOCATION:'Harare',ECOCASH_MERCHANT_NAME:'UAT STORE 3',ECOCASH_SUPER_MERCHANT_NAME:'ECOCASH'};
+ assert.equal(run(env,code).stdout.trim(),'ecocash|cash,ecocash|sandbox');
+ assert.match(run({...env,ECOCASH_MODE:'live'},code).stdout,/production ECOCASH_API_BASE_URL/);
+});
 test('declined simulated payments and cash outcomes',async()=>{
  const code="import('./src/payments.js').then(async m=>{const a=await m.authorizePayment({method:'card',demoOutcome:'declined'});const b=await m.authorizePayment({method:'cash'});const c=await m.authorizePayment({method:'card'});console.log([a.outcome,b.outcome,c.outcome,c.reference.startsWith('SIM-')].join())})";
  assert.equal(run({PAYMENT_PROVIDER:'simulated'},code).stdout.trim(),'declined,pending,approved,true');

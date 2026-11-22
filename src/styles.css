@@ -22,6 +22,29 @@
 /* SSTWAS 2.0 — three-module refinements */
 .simple-selectors{display:flex;gap:12px;align-items:flex-end;margin-bottom:20px}.quick-workflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.quick-workflow article{background:#f4f8fe;border:1px solid #e0eaf7;border-radius:15px;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}.quick-workflow article>svg{width:26px;height:26px;color:#276ddc}.quick-workflow article h3{margin:0;font-size:16px}.quick-workflow article p{font-size:12px;color:#7086a1;line-height:1.6;flex:1;margin:0}.quick-workflow article .btn{font-size:12px}.queue-count{margin-left:auto;color:#fff;background:#c75b33;font-size:10px;border-radius:99px;padding:3px 7px}.cashier-workspace .role-label{background:#174358}.admin-workspace .role-label{background:#233958}.simple-selectors .field{min-width:230px}.site-footer{font-size:11px}
 @media(max-width:1050px){.quick-workflow{grid-template-columns:1fr 1fr}}@media(max-width:700px){.quick-workflow{grid-template-columns:1fr}.simple-selectors{display:block}.simple-selectors .field{min-width:0}}
+
+/* Consistent card interaction across workspaces */
+.panel,.metric,.qr-box,.kiosk-card,.order-ticket,.store-card,.callout,.quick-workflow article,.verification-detail,.verify-station-card,.credential-box{
+ transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease,background .22s ease;
+}
+.panel:hover,.metric:hover,.qr-box:hover,.kiosk-card:hover,.order-ticket:hover,.store-card:hover,.callout:hover,.quick-workflow article:hover,.verification-detail:hover,.verify-station-card:hover,.credential-box:hover{
+ transform:translateY(-4px);
+ border-color:#b8cce8;
+ box-shadow:0 16px 38px #243d5c18;
+}
+.panel:focus-within,.metric:focus-within,.qr-box:focus-within,.kiosk-card:focus-within,.order-ticket:focus-within,.store-card:focus-within,.callout:focus-within,.quick-workflow article:focus-within,.verification-detail:focus-within,.verify-station-card:focus-within,.credential-box:focus-within{
+ border-color:#91b5e7;
+ box-shadow:0 12px 32px #243d5c12;
+}
+.interactive-card{cursor:pointer}
+.interactive-card:active{transform:translateY(-1px) scale(.992)}
+.interactive-card:focus-visible{outline:3px solid #8bbaf2;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){
+ .panel,.metric,.qr-box,.kiosk-card,.order-ticket,.store-card,.callout,.quick-workflow article,.verification-detail,.verify-station-card,.credential-box,
+ .interactive-card{transition:none}
+ .panel:hover,.metric:hover,.qr-box:hover,.kiosk-card:hover,.order-ticket:hover,.store-card:hover,.callout:hover,.quick-workflow article:hover,.verification-detail:hover,.verify-station-card:hover,.credential-box:hover,
+ .interactive-card:active{transform:none}
+}
 .profile-choices{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 28px}.profile-choices button{border:1px solid #dce6f5;border-radius:999px;background:#fff;color:#35516f;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;padding:12px 16px}.profile-choices button.selected{background:#2365d9;border-color:#2365d9;color:#fff}.profile-choices button:hover:not(.selected){background:#eef5ff}
 
 .offline-banner{margin:14px 0;background:#fff5d9;border:1px solid #f0d99a;color:#805e16;padding:13px 17px;border-radius:12px;font-weight:700;font-size:12px;line-height:1.5}

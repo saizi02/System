@@ -7,7 +7,6 @@ import {useDoc,useLive} from '../lib/live';
 import {call} from '../lib/api';
 import {useArrivals,useChime} from '../lib/alerts';
 import {printKitchenTicket} from '../lib/printing';
-import PrinterSetup from '../components/PrinterSetup';
 import {Brand,LiveBadge} from '../components/UI';
 import type {Branch,Business,Order} from '../lib/types';
 
@@ -50,7 +49,6 @@ export default function Kitchen(){
    <div className="kds-tools"><LiveBadge synced={synced} error={orderErr}/>
     <button className={'kds-btn '+(chime.enabled?'on':'')} onClick={chime.toggle} title="Sound alert for new orders">{chime.enabled?<Bell size={16}/>:<BellOff size={16}/>}{chime.enabled?'Sound on':'Sound off'}</button>
     <button className="kds-btn" onClick={()=>void me.logout().then(()=>go('/kitchen'))}><LogOut size={16}/> Sign out</button></div></header>
-  <PrinterSetup/>
   {banner&&<div className="kds-banner" role="status"><Flame size={18}/> {banner}</div>}
   {(error||orderErr)&&<p className="error kds-error" role="alert">{error||orderErr}</p>}
   {!store?<div className="kds-empty"><UtensilsCrossed size={42}/><h2>No Food store available</h2><p>The kitchen display is only used by Food stores. {supervisor?'Register a Food store in the Admin console first.':'Ask your administrator to check your account.'}</p></div>
