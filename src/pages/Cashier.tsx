@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   listResource,
   detailResource,
@@ -67,7 +67,16 @@ export default function Cashier() {
     isSim = appConfig.payments.simulated;
   const me = useSession(),
     go = useNavigate(),
+    location = useLocation(),
     superAdmin = me.role === "super_admin";
+  const requestedSection = new URLSearchParams(location.search).get("section");
+  const initialSection: Section =
+    requestedSection === "cash" ||
+    requestedSection === "collection" ||
+    requestedSection === "history" ||
+    requestedSection === "closeout"
+      ? requestedSection
+      : "overview";
   const [cashReview, setCashReview] = useState<Order | null>(null),
     [cashFind, setCashFind] = useState(""),
     [cashScan, setCashScan] = useState(false),
@@ -75,7 +84,7 @@ export default function Cashier() {
     [account, setAccount] = useState(false),
     [notice, setNotice] = useState("");
   const chime = useChime("sstwas-cashier-chime");
-  const [view, setView] = useState<Section>("overview"),
+  const [view, setView] = useState<Section>(initialSection),
     [chosenStore, setChosenStore] = useState(me.businessId || ""),
     [chosenBranch, setChosenBranch] = useState(""),
     [menu, setMenu] = useState(false),
@@ -210,6 +219,7 @@ export default function Cashier() {
     setMenu(false);
     setError("");
     setSuccess("");
+    go(`/cashier${s === "overview" ? "" : `?section=${s}`}`, { replace: true });
   };
   useEffect(() => {
     if (isGrocery && view === "collection") setView("overview");
@@ -368,21 +378,24 @@ export default function Cashier() {
                   <div
                     className={`metrics-grid ${isGrocery ? "metrics-3" : "metrics-5"}`}
                   >
-                    <Stat label="Pending cash" value={pending.length} />
-                    <Stat label="Paid checkouts" value={paid.length} />
+                    <Stat label="Pending cash" value={pending.length} onClick={()=>change("cash")} />
+                    <Stat label="Paid checkouts" value={paid.length} onClick={()=>change("history")} />
                     <Stat
                       label="Recorded total"
                       value={money(paid.reduce((n, o) => n + o.totalCents, 0))}
+                      onClick={()=>change("closeout")}
                     />
                     {!isGrocery && (
                       <>
                         <Stat
                           label={isFood ? "In kitchen" : "To prepare"}
                           value={inKitchen.length}
+                          onClick={()=>change("collection")}
                         />
                         <Stat
                           label="Ready for handover"
                           value={readyForHandover.length}
+                          onClick={()=>change("collection")}
                         />
                       </>
                     )}

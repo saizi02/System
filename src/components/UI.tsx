@@ -4,7 +4,7 @@ export function Header(){const{role,logout}=useSession();return <header classNam
 export function Empty({title,detail}:{title:string;detail?:string}){return <div className="empty"><ScanLine size={30}/><h3>{title}</h3><p>{detail||'Nothing to display here yet.'}</p></div>}
 export function PageTitle({eyebrow,title,description,action}:{eyebrow?:string;title:string;description?:string;action?:React.ReactNode}){return <div className="page-head"><div><span className="eyebrow">{eyebrow||'TILLORA RETAIL'}</span><h1>{title}</h1>{description&&<p>{description}</p>}</div>{action}</div>}
 export function Pill({text}:{text:string}){return <span className={'pill pill-'+text.replace(/[^a-z]/g,'_')}>{text.replaceAll('_',' ')}</span>}
-export function Stat({label,value,detail}:{label:string;value:string|number;detail?:string}){return <div className="metric"><small>{label}</small><strong>{value}</strong><span>{detail}</span></div>}
+export function Stat({label,value,detail,onClick}:{label:string;value:string|number;detail?:string;onClick?:()=>void}){const content=<><small>{label}</small><strong>{value}</strong><span>{detail}</span></>;return onClick?<button type="button" className="metric interactive-metric" onClick={onClick} aria-label={`Open ${label}`}>{content}</button>:<div className="metric">{content}</div>}
 export function Action({children,onClick,secondary=false,disabled=false}:{children:React.ReactNode;onClick?:()=>void;secondary?:boolean;disabled?:boolean}){return <button type="button" className={'btn '+(secondary?'btn-outline':'btn-primary')} onClick={onClick} disabled={disabled}>{children}<ArrowRight size={16}/></button>}
 
 export function RoleBadge({role}:{role:Role}){return <span className={'role-badge role-'+role}>{roleLabel[role]}</span>}
